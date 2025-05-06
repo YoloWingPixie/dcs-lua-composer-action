@@ -1,6 +1,6 @@
 ---
 name: 'DCS Lua Composer'
-description: 'Builds a single, sanitized Lua file by composing header, namespace, core modules, entrypoint, and footer sections for DCS World.'
+description: 'Combines all Lua source files for a project into one sanitized, mission-ready script for DCS World for easier development.'
 author: 'YoloWingPixie'
 
 branding:
