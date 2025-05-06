@@ -1,7 +1,7 @@
 version: '3'
 
 vars:
-  PYTHON_VERSION: '3.10' # Keep consistent with action.yml
+  PYTHON_VERSION: '3.12' # Standardize on 3.12
   VENV_DIR: .venv
 
 tasks:
