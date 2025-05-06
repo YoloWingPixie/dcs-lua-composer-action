@@ -35,7 +35,8 @@ jobs:
           # Ensure tags are fetched
           git fetch --tags
           
-          CURRENT_VERSION=$(cat VERSION | tr -d '\r\n') 
+          # Read version and robustly trim all leading/trailing whitespace
+          CURRENT_VERSION=$(cat VERSION | xargs)
           echo "Version from file: '$CURRENT_VERSION'"
           echo "Version from file (hex):"
           echo "$CURRENT_VERSION" | hexdump -C
