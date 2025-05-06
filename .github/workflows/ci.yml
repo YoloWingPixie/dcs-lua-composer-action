@@ -1,4 +1,4 @@
-name: Test DCS Lua Composer Script Logic
+name: CI
 
 on:
   push:
