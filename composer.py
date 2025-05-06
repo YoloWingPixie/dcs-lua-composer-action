@@ -2,9 +2,9 @@ import argparse
 import datetime
 import os
 import re
+import warnings
 from collections import defaultdict
 from pathlib import Path
-import warnings
 
 import luaparser.ast as ast
 import luaparser.astnodes as astnodes
@@ -15,7 +15,7 @@ warnings.filterwarnings("ignore", message=r".*invalid escape sequence '\\c'.*", 
 warnings.filterwarnings("ignore", message=r".*invalid escape sequence '\\8'.*", category=SyntaxWarning, module="luaparser.printers")
 warnings.filterwarnings("ignore", message=r".*invalid escape sequence '\\9'.*", category=SyntaxWarning, module="luaparser.printers")
 # Fallback if messages are less predictable but we trust the module source of warning:
-# warnings.filterwarnings("ignore", category=SyntaxWarning, module="luaparser\.printers") 
+# warnings.filterwarnings("ignore", category=SyntaxWarning, module="luaparser\.printers")
 
 # Disallowed patterns for regex removal/replacement (package lines)
 # print and log are handled by specific regex transformations now if not removed by strict checks.
@@ -74,9 +74,9 @@ def parse_dependencies(file_path, src_dir_path):
     """Parses a Lua file to find its dependencies (required modules) using luaparser."""
     dependencies = set()
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, encoding='utf-8') as f:
             content = f.read()
-        
+
         print(f"DEBUG: Calling ast.parse in PARSE_DEPENDENCIES for {file_path}") # DEBUG PRINT
         tree = ast.parse(content)
 
