@@ -1,3 +1,4 @@
+---
 name: CI
 
 on:
@@ -33,7 +34,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 
+          fetch-depth: 0
 
       - name: Validate VERSION file (no trailing whitespace)
         shell: bash
@@ -50,7 +51,7 @@ jobs:
         run: |
           echo "Base ref: ${{ github.base_ref }}"
           git fetch origin ${{ github.base_ref }}
-          
+
           BASE_VERSION=$(cat VERSION) # Read current branch version first
           # Temporarily checkout base ref to read its VERSION file
           git checkout origin/${{ github.base_ref }} -- VERSION
@@ -60,9 +61,10 @@ jobs:
 
           echo "Base (origin/${{ github.base_ref }}) VERSION: $PR_BASE_VERSION"
           echo "Current PR branch VERSION: $BASE_VERSION"
-          
+
           if [[ "$BASE_VERSION" == "$PR_BASE_VERSION" ]]; then
-            echo "::error::VERSION file has not been updated in this PR compared to branch '${{ github.base_ref }}'. Please increment the version." 
+            echo "::error::VERSION file has not been updated in this PR compared to branch '${{ github.base_ref }}'."
+            echo "::error::Please increment the version."
             exit 1
           else
             echo "VERSION file has been updated. Proceeding..."
@@ -79,7 +81,7 @@ jobs:
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          uv --version 
+          uv --version
 
       - name: Sync environment with uv
         shell: bash
@@ -90,12 +92,14 @@ jobs:
           uv run pytest --version
           echo "Verifying ruff installation..."
           uv run ruff --version
-      
+          echo "Verifying yamllint installation..."
+          uv run yamllint --version
+
       - name: Run Pytest
         shell: bash
         run: |
           uv run pytest tests/test_composer.py
-      
+
       - name: Run Ruff Linter
         shell: bash
         run: |
@@ -104,4 +108,14 @@ jobs:
       - name: Run Ruff Formatter Check
         shell: bash
         run: |
-          uv run ruff format --check . 
+          uv run ruff format --check .
+
+      - name: Run Pre-Commit Checks
+        shell: bash
+        run: |
+          uv run pre-commit run --all-files
+
+      - name: Run YAML Lint
+        shell: bash
+        run: |
+          uv run yamllint .

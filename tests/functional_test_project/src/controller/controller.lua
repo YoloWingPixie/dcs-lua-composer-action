@@ -1,2 +1,2 @@
 MyProjectNS.controller_loaded = true
-print("controller print") 
+print("controller print")

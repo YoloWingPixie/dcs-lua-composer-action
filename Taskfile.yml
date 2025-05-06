@@ -1,7 +1,8 @@
+---
 version: '3'
 
 vars:
-  PYTHON_VERSION: '3.12' # Standardize on 3.12
+  PYTHON_VERSION: '3.12'  # Standardize on 3.12
   VENV_DIR: .venv
 
 tasks:
@@ -9,9 +10,10 @@ tasks:
     desc: "Sync environment, lint, and run tests."
     cmds:
       - task: sync
+      - task: format
+      - task: pre-commit:run # Ensure hooks run before tests in default task
       - task: lint
       - task: test
-      - task: format
     silent: true # Hide task execution lines for default task
 
   setup:
@@ -19,9 +21,9 @@ tasks:
     aliases: [sync]
     cmds:
       - echo "Ensuring Python version {{.PYTHON_VERSION}} is available/pinned..."
-      # uv python pin {{.PYTHON_VERSION}} # Optional: if you want uv to manage/install python versions
+      # uv python pin {{.PYTHON_VERSION}}  # Optional: if you want uv to manage/install python versions
       - echo "Creating venv (if needed) and syncing with uv.lock..."
-      - uv sync --all-extras # Installs main + dev dependencies from uv.lock
+      - uv sync --all-extras  # Installs main + dev dependencies from uv.lock
     sources:
       - pyproject.toml
       - uv.lock
@@ -30,7 +32,9 @@ tasks:
       - '{{.VENV_DIR}}/pyvenv.cfg'
     status:
       # Check if pytest is importable using the venv python
-      - '{{if OS | eq "windows"}}{{.VENV_DIR}}\Scripts\python{{else}}{{.VENV_DIR}}/bin/python{{end}} -c "import sys; import pytest"'
+      - >-
+        {{if OS | eq "windows"}}{{.VENV_DIR}}\Scripts\python{{else}}{{.VENV_DIR}}/bin/python{{end}}
+        -c "import sys; import pytest"
 
   test:
     desc: "Run tests using pytest via uv run."
@@ -45,6 +49,13 @@ tasks:
       - tests/functional_test_project/src/**/*.txt
 
   lint:
+    desc: "Lint Python code with Ruff and YAML files with yamllint."
+    deps: [sync]
+    cmds:
+      - task: lint-python
+      - task: lint-yaml
+
+  lint-python:
     desc: "Lint Python code with Ruff via uv run."
     deps: [sync]
     cmds:
@@ -53,15 +64,25 @@ tasks:
     sources:
       - composer.py
       - tests/**/*.py
+      - pyproject.toml  # Ruff config is here
+
+  lint-yaml:
+    desc: "Lint YAML files with yamllint via uv run."
+    deps: [sync]
+    cmds:
+      - uv run yamllint action.yml
+      - uv run yamllint Taskfile.yml
+      - uv run yamllint .github/workflows/*.yml
+    sources:
       - action.yml
       - Taskfile.yml
-      - pyproject.toml
+      - .github/workflows/*.yml
 
   format:
     desc: "Format Python code with Ruff via uv run."
     deps: [sync]
     cmds:
-      - uv run ruff format .
+      - uv run ruff format
     sources:
       - composer.py
       - tests/**/*.py
@@ -76,6 +97,21 @@ tasks:
     sources:
       - pyproject.toml
 
+  pre-commit:install:
+    desc: "Install pre-commit hooks into your .git/hooks directory."
+    deps: [sync]  # Ensure pre-commit is installed
+    cmds:
+      - uv run pre-commit install
+    status:
+      # Check if the pre-commit hook script exists
+      - test -f .git/hooks/pre-commit
+
+  pre-commit:run:
+    desc: "Run all pre-commit hooks on all files."
+    deps: [sync]
+    cmds:
+      - uv run pre-commit run --all-files
+
   clean:
     desc: "Remove virtual environment and other generated files."
     cmds:
@@ -85,4 +121,4 @@ tasks:
       - echo "Removing __pycache__ directories and *.pyc/*.pyo files..."
       - find . -type d -name '__pycache__' -exec rm -r {} + || true
       - find . -type f \( -name '*.pyc' -o -name '*.pyo' \) -delete || true
-    silent: true # Hide the find/rm commands unless there's an error 
+    silent: true  # Hide the find/rm commands unless there's an error

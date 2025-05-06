@@ -1,2 +1,2 @@
 MyProjectNS.manager_loaded = true
-print("manager print") 
+print("manager print")
