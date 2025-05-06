@@ -1,9 +1,10 @@
+import argparse
+import datetime
 import os
 import re
-import argparse
 from collections import defaultdict
 from pathlib import Path
-import datetime
+
 import luaparser.ast as ast
 import luaparser.astnodes as astnodes
 
@@ -27,22 +28,16 @@ REQUIRE_REMOVAL_PATTERN = re.compile(
 )
 
 # Patterns for print/log transformation
-PRINT_TRANSFORM_PATTERN = re.compile(
-    r"\bprint\s*(\([^\)]*\))"
-)  # captures arguments in group 1
+PRINT_TRANSFORM_PATTERN = re.compile(r"\bprint\s*(\([^\)]*\))")  # captures arguments in group 1
 LOG_INFO_TRANSFORM_PATTERN = re.compile(r"\blog\.info\s*(\([^\)]*\))")
 LOG_WARNING_TRANSFORM_PATTERN = re.compile(r"\blog\.warning\s*(\([^\)]*\))")
 LOG_ERROR_TRANSFORM_PATTERN = re.compile(r"\blog\.error\s*(\([^\)]*\))")
-LOG_OTHER_REMOVAL_PATTERN = re.compile(
-    r"\blog\.[a-zA-Z_][a-zA-Z0-9_]*\s*\([^\)]*\)(?:\s*;)?"
-)
+LOG_OTHER_REMOVAL_PATTERN = re.compile(r"\blog\.[a-zA-Z_][a-zA-Z0-9_]*\s*\([^\)]*\)(?:\s*;)?")
 
 # Pattern to find the loadlib call for warning messages
 LOADLIB_CALL_PATTERN = re.compile(r"\bloadlib\s*\(.*?\)(?:\s*;)?")
 # Pattern to remove the entire line containing loadlib
-LOADLIB_LINE_REMOVAL_PATTERN = re.compile(
-    r"^[ \t]*[^\r\n]*\bloadlib\b[^\r\n]*\r?\n?", re.MULTILINE
-)
+LOADLIB_LINE_REMOVAL_PATTERN = re.compile(r"^[ \t]*[^\r\n]*\bloadlib\b[^\r\n]*\r?\n?", re.MULTILINE)
 
 
 def find_lua_files(src_dir):
@@ -70,18 +65,14 @@ def parse_dependencies(file_path, src_dir_path):
     """Parses a Lua file to find its dependencies (required modules) using luaparser."""
     dependencies = set()
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             content = f.read()
 
         tree = ast.parse(content)
 
         for node in ast.walk(tree):
             # We are looking for Call nodes, where the function being called is a Name node with id 'require'
-            if (
-                isinstance(node, astnodes.Call)
-                and isinstance(node.func, astnodes.Name)
-                and node.func.id == "require"
-            ):
+            if isinstance(node, astnodes.Call) and isinstance(node.func, astnodes.Name) and node.func.id == "require":
                 # Check if arguments exist and the first argument is a String node
                 if node.args and isinstance(node.args[0], astnodes.String):
                     dependencies.add(node.args[0].s)
@@ -91,15 +82,13 @@ def parse_dependencies(file_path, src_dir_path):
 
     except Exception as e:
         # Catch luaparser specific errors if any, or file errors
-        print(
-            f"Error reading or parsing dependencies from {file_path} with luaparser: {e}"
-        )
+        print(f"Error reading or parsing dependencies from {file_path} with luaparser: {e}")
     return dependencies
 
 
 def topological_sort(dependencies_graph, all_modules_to_sort, module_to_path_map):
     """Performs a topological sort on the dependency graph with directory-affinity tie-breaking."""
-    in_degree = {module: 0 for module in all_modules_to_sort}
+    in_degree = dict.fromkeys(all_modules_to_sort, 0)
     adj = defaultdict(list)
     # Using a list for the queue to allow for selective picking
     processing_queue = []
@@ -128,11 +117,7 @@ def topological_sort(dependencies_graph, all_modules_to_sort, module_to_path_map
         # Try to find a module in the current directory context
         if current_directory_context:
             context_candidates = sorted(
-                [
-                    m
-                    for m in processing_queue
-                    if Path(module_to_path_map[m]).parent == current_directory_context
-                ]
+                [m for m in processing_queue if Path(module_to_path_map[m]).parent == current_directory_context]
             )
             if context_candidates:
                 module_to_process = context_candidates[0]
@@ -187,20 +172,11 @@ def sanitize_content(content, file_path, is_lua_module=True, dcs_strict_sanitize
                 line_num = node.first_token.line if node.first_token else "unknown"
                 offending_line_text = ""
                 if node.start_char is not None and node.stop_char is not None:
-                    line_start = (
-                        original_content_for_error_reporting.rfind(
-                            "\n", 0, node.start_char
-                        )
-                        + 1
-                    )
-                    line_end = original_content_for_error_reporting.find(
-                        "\n", node.stop_char
-                    )
+                    line_start = original_content_for_error_reporting.rfind("\n", 0, node.start_char) + 1
+                    line_end = original_content_for_error_reporting.find("\n", node.stop_char)
                     if line_end == -1:
                         line_end = len(original_content_for_error_reporting)
-                    offending_line_text = original_content_for_error_reporting[
-                        line_start:line_end
-                    ].strip()
+                    offending_line_text = original_content_for_error_reporting[line_start:line_end].strip()
                 raise Exception(
                     f"Disallowed 'goto' statement found in {file_path} on line {line_num}: {offending_line_text}"
                 )
@@ -222,51 +198,26 @@ def sanitize_content(content, file_path, is_lua_module=True, dcs_strict_sanitize
                         "io",
                         "lfs",
                     ]:
-                        offending_id = (
-                            node.func.id
-                            + "() call pattern (potential direct library call)"
-                        )
+                        offending_id = node.func.id + "() call pattern (potential direct library call)"
 
-                if isinstance(node, astnodes.Index) and isinstance(
-                    node.value, astnodes.Name
-                ):
+                if isinstance(node, astnodes.Index) and isinstance(node.value, astnodes.Name):
                     if node.value.id in ["os", "io", "lfs"]:
                         idx_text = (
                             node.idx.s
                             if isinstance(node.idx, astnodes.String)
-                            else (
-                                node.idx.id
-                                if isinstance(node.idx, astnodes.Name)
-                                else "complex_index"
-                            )
+                            else (node.idx.id if isinstance(node.idx, astnodes.Name) else "complex_index")
                         )
                         offending_id = f"{node.value.id}.{idx_text}"
 
                 if offending_id:
-                    line_num = (
-                        node_for_error.first_token.line
-                        if node_for_error.first_token
-                        else "unknown"
-                    )
+                    line_num = node_for_error.first_token.line if node_for_error.first_token else "unknown"
                     err_line_text = ""
-                    if (
-                        node_for_error.start_char is not None
-                        and node_for_error.stop_char is not None
-                    ):
-                        line_start = (
-                            original_content_for_error_reporting.rfind(
-                                "\n", 0, node_for_error.start_char
-                            )
-                            + 1
-                        )
-                        line_end = original_content_for_error_reporting.find(
-                            "\n", node_for_error.stop_char
-                        )
+                    if node_for_error.start_char is not None and node_for_error.stop_char is not None:
+                        line_start = original_content_for_error_reporting.rfind("\n", 0, node_for_error.start_char) + 1
+                        line_end = original_content_for_error_reporting.find("\n", node_for_error.stop_char)
                         if line_end == -1:
                             line_end = len(original_content_for_error_reporting)
-                        err_line_text = original_content_for_error_reporting[
-                            line_start:line_end
-                        ].strip()
+                        err_line_text = original_content_for_error_reporting[line_start:line_end].strip()
                     raise Exception(
                         f"Disallowed DCS API usage ({offending_id}) found in {file_path} on line {line_num}: {err_line_text}"
                     )
@@ -275,15 +226,9 @@ def sanitize_content(content, file_path, is_lua_module=True, dcs_strict_sanitize
         processed_content = content
 
         # Handle loadlib: Warn and remove (entire line)
-        for match in LOADLIB_CALL_PATTERN.finditer(
-            processed_content
-        ):  # Use specific pattern for finding/warning
-            print(
-                f"WARNING: [{file_path}] Disallowed 'loadlib' call found and was removed: {match.group(0)}"
-            )
-        processed_content = LOADLIB_LINE_REMOVAL_PATTERN.sub(
-            "", processed_content
-        )  # Use line removal pattern for sub
+        for match in LOADLIB_CALL_PATTERN.finditer(processed_content):  # Use specific pattern for finding/warning
+            print(f"WARNING: [{file_path}] Disallowed 'loadlib' call found and was removed: {match.group(0)}")
+        processed_content = LOADLIB_LINE_REMOVAL_PATTERN.sub("", processed_content)  # Use line removal pattern for sub
 
         # Remove require statements
         processed_content = REQUIRE_REMOVAL_PATTERN.sub("", processed_content)
@@ -293,32 +238,20 @@ def sanitize_content(content, file_path, is_lua_module=True, dcs_strict_sanitize
             processed_content = pattern.sub(replacement, processed_content)
 
         # Transform log.* statements
-        processed_content = LOG_INFO_TRANSFORM_PATTERN.sub(
-            r"env.info\1", processed_content
-        )
-        processed_content = LOG_WARNING_TRANSFORM_PATTERN.sub(
-            r"env.warning\1", processed_content
-        )
-        processed_content = LOG_ERROR_TRANSFORM_PATTERN.sub(
-            r"env.error\1", processed_content
-        )
-        processed_content = LOG_OTHER_REMOVAL_PATTERN.sub(
-            "", processed_content
-        )  # Remove other log.xxx calls
+        processed_content = LOG_INFO_TRANSFORM_PATTERN.sub(r"env.info\1", processed_content)
+        processed_content = LOG_WARNING_TRANSFORM_PATTERN.sub(r"env.warning\1", processed_content)
+        processed_content = LOG_ERROR_TRANSFORM_PATTERN.sub(r"env.error\1", processed_content)
+        processed_content = LOG_OTHER_REMOVAL_PATTERN.sub("", processed_content)  # Remove other log.xxx calls
 
         # Transform print statements
-        processed_content = PRINT_TRANSFORM_PATTERN.sub(
-            r"env.info\1", processed_content
-        )
+        processed_content = PRINT_TRANSFORM_PATTERN.sub(r"env.info\1", processed_content)
 
         return processed_content
 
     except Exception as e:
         if "Disallowed" in str(e):  # Includes goto and DCS API errors
             raise
-        print(
-            f"Error during sanitization processing for {file_path}: {e}. Returning original content for this file."
-        )
+        print(f"Error during sanitization processing for {file_path}: {e}. Returning original content for this file.")
         return content
 
 
@@ -336,52 +269,34 @@ def build_project(
     output_file_path.parent.mkdir(parents=True, exist_ok=True)
 
     # --- Resolve paths for all specified files ---
-    header_path = (
-        (src_dir_path / header_file_rel).resolve() if header_file_rel else None
-    )
+    header_path = (src_dir_path / header_file_rel).resolve() if header_file_rel else None
     namespace_path = (src_dir_path / namespace_file_rel).resolve()  # Required
     entrypoint_path = (src_dir_path / entrypoint_file_rel).resolve()  # Required
-    footer_path = (
-        (src_dir_path / footer_file_rel).resolve() if footer_file_rel else None
-    )
+    footer_path = (src_dir_path / footer_file_rel).resolve() if footer_file_rel else None
 
     # --- Validate existence of required and optional files if specified ---
     if not namespace_path.is_file():
-        raise FileNotFoundError(
-            f"REQUIRED Namespace file '{namespace_file_rel}' not found at {namespace_path}"
-        )
+        raise FileNotFoundError(f"REQUIRED Namespace file '{namespace_file_rel}' not found at {namespace_path}")
     if not entrypoint_path.is_file():
-        raise FileNotFoundError(
-            f"REQUIRED Entrypoint file '{entrypoint_file_rel}' not found at {entrypoint_path}"
-        )
+        raise FileNotFoundError(f"REQUIRED Entrypoint file '{entrypoint_file_rel}' not found at {entrypoint_path}")
     if header_file_rel and not header_path.is_file():
-        raise FileNotFoundError(
-            f"Header file '{header_file_rel}' specified but not found at {header_path}"
-        )
+        raise FileNotFoundError(f"Header file '{header_file_rel}' specified but not found at {header_path}")
     if footer_file_rel and not footer_path.is_file():
-        raise FileNotFoundError(
-            f"Footer file '{footer_file_rel}' specified but not found at {footer_path}"
-        )
+        raise FileNotFoundError(f"Footer file '{footer_file_rel}' specified but not found at {footer_path}")
 
     # --- Discover all .lua files and map them ---
     all_lua_file_paths = find_lua_files(src_dir_path)
-    module_to_path = {
-        get_module_name_from_path(p, src_dir_path): p for p in all_lua_file_paths
-    }
+    module_to_path = {get_module_name_from_path(p, src_dir_path): p for p in all_lua_file_paths}
     path_to_module = {v: k for k, v in module_to_path.items()}
 
     # --- Identify core Lua modules for topological sorting ---
     # These are all .lua files excluding the specific fixed-order files.
     # Note: Header/Footer might not be .lua files, so they won't be in all_lua_file_paths if so.
     # The check `p not in fixed_order_paths` correctly handles this.
-    fixed_order_paths = {
-        p for p in [header_path, namespace_path, entrypoint_path, footer_path] if p
-    }
+    fixed_order_paths = {p for p in [header_path, namespace_path, entrypoint_path, footer_path] if p}
     core_module_paths = [p for p in all_lua_file_paths if p not in fixed_order_paths]
 
-    core_module_names_to_sort = {
-        path_to_module[p] for p in core_module_paths if p in path_to_module
-    }
+    core_module_names_to_sort = {path_to_module[p] for p in core_module_paths if p in path_to_module}
 
     dependencies_graph = {}
     for core_module_path_item in core_module_paths:
@@ -394,13 +309,12 @@ def build_project(
         dependencies_graph[core_module_name_item] = {
             dep
             for dep in deps
-            if dep
-            in core_module_names_to_sort  # Only sort based on other *core* modules
+            if dep in core_module_names_to_sort  # Only sort based on other *core* modules
         }
 
     print(
         "Core modules identified for topological sort:",
-        sorted(list(core_module_names_to_sort)),
+        sorted(core_module_names_to_sort),
     )
     if dependencies_graph:
         print("Dependencies for core modules:")
@@ -412,9 +326,7 @@ def build_project(
     if core_module_names_to_sort:
         try:
             # Pass the module_to_path map to the sort function
-            sorted_core_module_names = topological_sort(
-                dependencies_graph, core_module_names_to_sort, module_to_path
-            )
+            sorted_core_module_names = topological_sort(dependencies_graph, core_module_names_to_sort, module_to_path)
         except Exception as e:
             print(f"Error during topological sort of core modules: {e}")
             # Optionally, print more graph details here for debugging if needed
@@ -425,7 +337,7 @@ def build_project(
 
     # 1. Optional Header File Content (verbatim - no strict sanitization applied here by default rule)
     if header_path and header_path.is_file():
-        with open(header_path, "r", encoding="utf-8") as f:
+        with open(header_path, encoding="utf-8") as f:
             # Headers are typically non-Lua or special; dcs_strict_sanitize probably shouldn't apply here by default
             final_lua_code.append(
                 sanitize_content(
@@ -439,12 +351,8 @@ def build_project(
 
     # 2. Autogenerated Build Information
     current_time_utc = datetime.datetime.now(tz=datetime.timezone.utc)
-    final_lua_code.append(
-        f"-- Combined and Sanitized Lua script generated on {current_time_utc.isoformat()}\n"
-    )
-    final_lua_code.append(
-        "-- THIS IS A RELEASE FILE. DO NOT EDIT THIS FILE DIRECTLY. EDIT SOURCE FILES AND REBUILD.\n"
-    )
+    final_lua_code.append(f"-- Combined and Sanitized Lua script generated on {current_time_utc.isoformat()}\n")
+    final_lua_code.append("-- THIS IS A RELEASE FILE. DO NOT EDIT THIS FILE DIRECTLY. EDIT SOURCE FILES AND REBUILD.\n")
     if header_file_rel:
         final_lua_code.append(f"-- Header File: {header_file_rel}\n")
     final_lua_code.append(f"-- Namespace File: {namespace_file_rel}\n")
@@ -457,10 +365,8 @@ def build_project(
     final_lua_code.append("\n")
 
     # 3. Required Namespace File Content (sanitized)
-    final_lua_code.append(
-        f"-- Namespace Content from: {namespace_path.relative_to(src_dir_path)}\n"
-    )
-    with open(namespace_path, "r", encoding="utf-8") as f:
+    final_lua_code.append(f"-- Namespace Content from: {namespace_path.relative_to(src_dir_path)}\n")
+    with open(namespace_path, encoding="utf-8") as f:
         final_lua_code.append(
             sanitize_content(
                 f.read(),
@@ -475,17 +381,13 @@ def build_project(
     if sorted_core_module_names:
         print("\nFinal calculated loading order for core modules:")
         for i, module_name in enumerate(sorted_core_module_names):
-            print(
-                f"  {i + 1}. {module_name} (Path: {module_to_path[module_name].relative_to(src_dir_path)})"
-            )
+            print(f"  {i + 1}. {module_name} (Path: {module_to_path[module_name].relative_to(src_dir_path)})")
 
         for module_name in sorted_core_module_names:
             file_path = module_to_path[module_name]
-            final_lua_code.append(
-                f"\n-- Core Module Content from: {file_path.relative_to(src_dir_path)}\n"
-            )
+            final_lua_code.append(f"\n-- Core Module Content from: {file_path.relative_to(src_dir_path)}\n")
             final_lua_code.append(f"-- Module Name: {module_name}\n")
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 final_lua_code.append(
                     sanitize_content(
                         f.read(),
@@ -499,10 +401,8 @@ def build_project(
         print("\nNo core modules to process.")
 
     # 5. Required Entrypoint File Content (sanitized)
-    final_lua_code.append(
-        f"\n-- Entrypoint Content from: {entrypoint_path.relative_to(src_dir_path)}\n"
-    )
-    with open(entrypoint_path, "r", encoding="utf-8") as f:
+    final_lua_code.append(f"\n-- Entrypoint Content from: {entrypoint_path.relative_to(src_dir_path)}\n")
+    with open(entrypoint_path, encoding="utf-8") as f:
         final_lua_code.append(
             sanitize_content(
                 f.read(),
@@ -515,10 +415,8 @@ def build_project(
 
     # 6. Optional Footer File Content (verbatim - no strict sanitization applied here by default rule)
     if footer_path and footer_path.is_file():
-        final_lua_code.append(
-            f"\n-- Footer Content from: {footer_path.relative_to(src_dir_path)}\n"
-        )
-        with open(footer_path, "r", encoding="utf-8") as f:
+        final_lua_code.append(f"\n-- Footer Content from: {footer_path.relative_to(src_dir_path)}\n")
+        with open(footer_path, encoding="utf-8") as f:
             final_lua_code.append(
                 sanitize_content(
                     f.read(),
@@ -544,9 +442,7 @@ if __name__ == "__main__":
         description="Builds a single Lua file from a modular project for DCS, with specific file ordering.",
         formatter_class=argparse.RawTextHelpFormatter,  # For better help text display
     )
-    parser.add_argument(
-        "src_dir", help="Source directory containing all Lua and text files."
-    )
+    parser.add_argument("src_dir", help="Source directory containing all Lua and text files.")
     parser.add_argument("output_file", help="Path for the final combined Lua file.")
 
     parser.add_argument(

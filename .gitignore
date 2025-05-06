@@ -52,5 +52,5 @@ __pycache__/
 *.pywz
 
 #uv
-uv.lock
+.venv/
 

@@ -6,35 +6,35 @@ vars:
 
 tasks:
   default:
-    desc: "Install dependencies and run tests."
+    desc: "Sync environment, lint, and run tests."
     cmds:
-      - task: setup
+      - task: sync
       - task: lint
       - task: test
-      - task: format
     silent: true # Hide task execution lines for default task
 
   setup:
-    desc: "Set up Python virtual environment ({{.VENV_DIR}}) and install dependencies."
+    desc: "Set up Python virtual environment and install dependencies using uv.lock."
+    aliases: [sync]
     cmds:
-      - echo "Ensuring virtual environment {{.VENV_DIR}} exists..."
-      - uv venv {{.VENV_DIR}} --python {{.PYTHON_VERSION}}
-      - echo "Installing/updating dependencies into {{.VENV_DIR}}..."
-      - uv pip install -r requirements-dev.txt
+      - echo "Ensuring Python version {{.PYTHON_VERSION}} is available/pinned..."
+      # uv python pin {{.PYTHON_VERSION}} # Optional: if you want uv to manage/install python versions
+      - echo "Creating venv (if needed) and syncing with uv.lock..."
+      - uv sync --all-extras # Installs main + dev dependencies from uv.lock
     sources:
-      - requirements-dev.txt
+      - pyproject.toml
+      - uv.lock
     generates:
-      # Check for a file that uv venv creates
+      # Check for a file that uv sync creates
       - '{{.VENV_DIR}}/pyvenv.cfg'
     status:
       # Check if pytest is importable using the venv python
       - '{{if OS | eq "windows"}}{{.VENV_DIR}}\Scripts\python{{else}}{{.VENV_DIR}}/bin/python{{end}} -c "import sys; import pytest"'
 
   test:
-    desc: "Run tests using pytest in the virtual environment (runs setup first)."
-    deps: [setup]
+    desc: "Run tests using pytest via uv run."
+    deps: [sync]
     cmds:
-      # Run pytest via uv run to ensure it uses the venv
       - uv run pytest tests/test_composer.py
     sources:
       - composer.py
@@ -44,19 +44,21 @@ tasks:
       - tests/functional_test_project/src/**/*.txt
 
   lint:
-    desc: "Lint Python code with Ruff."
-    deps: [setup] # Depends on setup to ensure ruff is installed
+    desc: "Lint Python code with Ruff via uv run."
+    deps: [sync]
     cmds:
-      - uv run ruff check . --fix
+      - uv run ruff check .
+      - uv run ruff format --check .
     sources:
       - composer.py
       - tests/**/*.py
       - action.yml
       - Taskfile.yml
+      - pyproject.toml
 
   format:
-    desc: "Format Python code with Ruff."
-    deps: [setup]
+    desc: "Format Python code with Ruff via uv run."
+    deps: [sync]
     cmds:
       - uv run ruff format .
     sources:
@@ -64,14 +66,21 @@ tasks:
       - tests/**/*.py
       - action.yml
       - Taskfile.yml
+      - pyproject.toml
+
+  lock:
+    desc: "Generate or update the uv.lock file from pyproject.toml."
+    cmds:
+      - uv lock --all-extras
+    sources:
+      - pyproject.toml
 
   clean:
     desc: "Remove virtual environment and other generated files."
     cmds:
       - echo "Removing {{.VENV_DIR}} and dist directories..."
-      - rm -rf {{.VENV_DIR}}
-      - rm -rf dist
-      # Using '|| true' to prevent errors if patterns don't match any files
+      # Use python to remove directory for cross-platform compatibility
+      - python -c "import shutil; shutil.rmtree('.venv', ignore_errors=True); shutil.rmtree('dist', ignore_errors=True)"
       - echo "Removing __pycache__ directories and *.pyc/*.pyo files..."
       - find . -type d -name '__pycache__' -exec rm -r {} + || true
       - find . -type f \( -name '*.pyc' -o -name '*.pyo' \) -delete || true

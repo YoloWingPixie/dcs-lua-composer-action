@@ -1,10 +1,11 @@
-import pytest
-import re
-from pathlib import Path
 import datetime  # Import at the top level of the test file
+import re
 
 # Make sure composer.py is importable, assuming it's in the parent directory
 import sys
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import composer
@@ -37,9 +38,7 @@ def test_find_lua_files_basic(tmp_path):
     _create_file(project_dir / "file2.txt", "content2")  # Non-lua file
     _create_file(project_dir / "sub" / "file3.lua", "content3")
 
-    expected_files = sorted(
-        [project_dir / "file1.lua", project_dir / "sub" / "file3.lua"]
-    )
+    expected_files = sorted([project_dir / "file1.lua", project_dir / "sub" / "file3.lua"])
     actual_files = sorted(composer.find_lua_files(project_dir))
     assert actual_files == expected_files
 
@@ -56,9 +55,7 @@ def test_get_module_name_from_path(tmp_path):
     assert composer.get_module_name_from_path(path2, src_dir) == "package.submodule"
 
     path3 = src_dir / "another.module.with.dots.lua"
-    assert (
-        composer.get_module_name_from_path(path3, src_dir) == "another.module.with.dots"
-    )
+    assert composer.get_module_name_from_path(path3, src_dir) == "another.module.with.dots"
 
 
 # --- Tests for get_path_from_module_name ---
@@ -66,13 +63,8 @@ def test_get_path_from_module_name(tmp_path):
     src_dir = tmp_path / "project_src"
     src_dir.mkdir()
 
-    assert (
-        composer.get_path_from_module_name("module", src_dir) == src_dir / "module.lua"
-    )
-    assert (
-        composer.get_path_from_module_name("package.submodule", src_dir)
-        == src_dir / "package" / "submodule.lua"
-    )
+    assert composer.get_path_from_module_name("module", src_dir) == src_dir / "module.lua"
+    assert composer.get_path_from_module_name("package.submodule", src_dir) == src_dir / "package" / "submodule.lua"
 
 
 # --- Tests for parse_dependencies ---
@@ -118,86 +110,49 @@ def test_sanitize_print(tmp_path):
     content = "print(\"Hello\")\nlocal a = 1\nprint('world');"
     # Transformed to env.info
     expected = "env.info(\"Hello\")\nlocal a = 1\nenv.info('world');"
-    assert (
-        composer.sanitize_content(
-            content, file_path, is_lua_module=True, dcs_strict_sanitize=True
-        )
-        == expected
-    )
+    assert composer.sanitize_content(content, file_path, is_lua_module=True, dcs_strict_sanitize=True) == expected
 
 
 def test_sanitize_log_info(tmp_path):
     file_path = tmp_path / "test.lua"
     content = 'log.info("Starting script")\nlocal b = 2'
     expected = 'env.info("Starting script")\nlocal b = 2'
-    assert (
-        composer.sanitize_content(
-            content, file_path, is_lua_module=True, dcs_strict_sanitize=True
-        )
-        == expected
-    )
+    assert composer.sanitize_content(content, file_path, is_lua_module=True, dcs_strict_sanitize=True) == expected
 
 
 def test_sanitize_log_warning(tmp_path):
     file_path = tmp_path / "test.lua"
     content = 'log.warning("Problem detected")\nlocal c = 3'
     expected = 'env.warning("Problem detected")\nlocal c = 3'
-    assert (
-        composer.sanitize_content(
-            content, file_path, is_lua_module=True, dcs_strict_sanitize=True
-        )
-        == expected
-    )
+    assert composer.sanitize_content(content, file_path, is_lua_module=True, dcs_strict_sanitize=True) == expected
 
 
 def test_sanitize_log_error(tmp_path):
     file_path = tmp_path / "test.lua"
     content = 'log.error("Critical failure");\nlocal d = 4'
     expected = 'env.error("Critical failure");\nlocal d = 4'
-    assert (
-        composer.sanitize_content(
-            content, file_path, is_lua_module=True, dcs_strict_sanitize=True
-        )
-        == expected
-    )
+    assert composer.sanitize_content(content, file_path, is_lua_module=True, dcs_strict_sanitize=True) == expected
 
 
 def test_sanitize_log_other_removed(tmp_path):
     file_path = tmp_path / "test.lua"
     content = 'log.debug("Value is nil")\nlog.trace("Entering func");\nlocal e = 5'
     expected = "\n\nlocal e = 5"  # Other log levels are removed entirely
-    assert (
-        composer.sanitize_content(
-            content, file_path, is_lua_module=True, dcs_strict_sanitize=True
-        )
-        == expected
-    )
+    assert composer.sanitize_content(content, file_path, is_lua_module=True, dcs_strict_sanitize=True) == expected
 
 
 def test_sanitize_require(tmp_path):
     file_path = tmp_path / "test.lua"
     content = 'require "mymodule"\nlocal c = 3'
     expected = "local c = 3"
-    assert (
-        composer.sanitize_content(
-            content, file_path, is_lua_module=True, dcs_strict_sanitize=True
-        )
-        == expected
-    )
+    assert composer.sanitize_content(content, file_path, is_lua_module=True, dcs_strict_sanitize=True) == expected
 
 
 def test_sanitize_package_line_removal(tmp_path):
     file_path = tmp_path / "test.lua"
-    content = (
-        "local x = package.path\nlocal y = 1\n  package.loaded['foo'] = nil -- indented"
-    )
+    content = "local x = package.path\nlocal y = 1\n  package.loaded['foo'] = nil -- indented"
     expected = "local y = 1\n"
-    assert (
-        composer.sanitize_content(
-            content, file_path, is_lua_module=True, dcs_strict_sanitize=True
-        )
-        == expected
-    )
+    assert composer.sanitize_content(content, file_path, is_lua_module=True, dcs_strict_sanitize=True) == expected
 
 
 def test_sanitize_goto_failure(tmp_path):
@@ -207,33 +162,21 @@ def test_sanitize_goto_failure(tmp_path):
         Exception,
         match=r"Disallowed 'goto' statement found in .*?test_goto.lua on line 2: goto mylabel",
     ):
-        composer.sanitize_content(
-            content, file_path, is_lua_module=True, dcs_strict_sanitize=True
-        )
+        composer.sanitize_content(content, file_path, is_lua_module=True, dcs_strict_sanitize=True)
 
 
 def test_sanitize_goto_in_comment(tmp_path):
     file_path = tmp_path / "test_goto_comment.lua"
     content = "-- goto mylabel should be fine\nlocal y = 2"
     expected = "-- goto mylabel should be fine\nlocal y = 2"
-    assert (
-        composer.sanitize_content(
-            content, file_path, is_lua_module=True, dcs_strict_sanitize=True
-        )
-        == expected
-    )
+    assert composer.sanitize_content(content, file_path, is_lua_module=True, dcs_strict_sanitize=True) == expected
 
 
 def test_sanitize_verbatim_content(tmp_path):
     file_path = tmp_path / "header.txt"
     content = 'print("This should stay")\nrequire "module" -- also stays'
     # Verbatim content is not sanitized, regardless of strict flag, as is_lua_module=False
-    assert (
-        composer.sanitize_content(
-            content, file_path, is_lua_module=False, dcs_strict_sanitize=True
-        )
-        == content
-    )
+    assert composer.sanitize_content(content, file_path, is_lua_module=False, dcs_strict_sanitize=True) == content
 
 
 # --- Tests for strict DCS sanitization flag ---
@@ -241,39 +184,28 @@ def test_sanitize_strict_os_fails(tmp_path):
     file_path = tmp_path / "test_strict_os.lua"
     content = "local t = os.time()"
     with pytest.raises(Exception, match=r"Disallowed DCS API usage \(os\.time\)"):
-        composer.sanitize_content(
-            content, file_path, is_lua_module=True, dcs_strict_sanitize=True
-        )
+        composer.sanitize_content(content, file_path, is_lua_module=True, dcs_strict_sanitize=True)
 
 
 def test_sanitize_strict_os_passes_when_false(tmp_path):
     file_path = tmp_path / "test_strict_os_pass.lua"
     content = "local t = os.time()"
     # Expect content back unmodified because strict check is off, and os.time isn't otherwise sanitized
-    assert (
-        composer.sanitize_content(
-            content, file_path, is_lua_module=True, dcs_strict_sanitize=False
-        )
-        == content
-    )
+    assert composer.sanitize_content(content, file_path, is_lua_module=True, dcs_strict_sanitize=False) == content
 
 
 def test_sanitize_strict_io_fails(tmp_path):
     file_path = tmp_path / "test_strict_io.lua"
     content = "local f = io.open('file')"
     with pytest.raises(Exception, match=r"Disallowed DCS API usage \(io\.open\)"):
-        composer.sanitize_content(
-            content, file_path, is_lua_module=True, dcs_strict_sanitize=True
-        )
+        composer.sanitize_content(content, file_path, is_lua_module=True, dcs_strict_sanitize=True)
 
 
 def test_sanitize_strict_lfs_fails(tmp_path):
     file_path = tmp_path / "test_strict_lfs.lua"
     content = "local d = lfs.writedir()"
     with pytest.raises(Exception, match=r"Disallowed DCS API usage \(lfs\.writedir\)"):
-        composer.sanitize_content(
-            content, file_path, is_lua_module=True, dcs_strict_sanitize=True
-        )
+        composer.sanitize_content(content, file_path, is_lua_module=True, dcs_strict_sanitize=True)
 
 
 def test_sanitize_loadlib_removed_with_warning(tmp_path, capsys):
@@ -285,9 +217,7 @@ def test_sanitize_loadlib_removed_with_warning(tmp_path, capsys):
     sanitized = composer.sanitize_content(
         content, file_path, is_lua_module=True, dcs_strict_sanitize=True
     )  # strict flag doesn't affect loadlib warning/removal
-    assert (
-        sanitized.strip() == expected_content.strip()
-    )  # Use strip to handle potential subtle newline differences
+    assert sanitized.strip() == expected_content.strip()  # Use strip to handle potential subtle newline differences
 
     captured = capsys.readouterr()
     assert (
@@ -302,9 +232,7 @@ def test_sanitize_strict_local_var_ok(tmp_path):
     # Removing the ambiguous os.foo = 1, just testing local declarations
     content = "local os = {}\nlocal lfs = nil\nlocal io = 'hello'"
     # Should pass without error when strict=True because os/lfs/io are locals, not stdlib calls/indices
-    sanitized = composer.sanitize_content(
-        content, file_path, is_lua_module=True, dcs_strict_sanitize=True
-    )
+    sanitized = composer.sanitize_content(content, file_path, is_lua_module=True, dcs_strict_sanitize=True)
     assert sanitized == content  # Nothing should be removed/changed
 
 
@@ -379,9 +307,7 @@ def sample_project_structure_basic(tmp_path):
         src / "core" / "utils.lua",
         """require "core.data"\nProjectNS.utils_loaded = true\nprint("utils print")""",
     )
-    create_file(
-        src / "core" / "data.lua", 'ProjectNS.data_loaded = true\nprint("data print")'
-    )
+    create_file(src / "core" / "data.lua", 'ProjectNS.data_loaded = true\nprint("data print")')
     create_file(
         src / "app" / "main_app.lua",
         """require "core.utils"\nProjectNS.app_start = function() print("App Start") end""",
@@ -390,9 +316,7 @@ def sample_project_structure_basic(tmp_path):
     return src
 
 
-def test_build_project_basic_composition(
-    tmp_path, sample_project_structure_basic, mocker
-):
+def test_build_project_basic_composition(tmp_path, sample_project_structure_basic, mocker):
     mocked_now = datetime.datetime(2023, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc)
     mocker.patch("composer.datetime.datetime")
     composer.datetime.datetime.now.return_value = mocked_now
@@ -413,18 +337,13 @@ def test_build_project_basic_composition(
     content = output_file.read_text(encoding="utf-8")
     assert "-- HEADER --" in content
     assert "-- FOOTER --" in content
-    assert (
-        f"-- Combined and Sanitized Lua script generated on {mocked_now.isoformat()}"
-        in content
-    )
+    assert f"-- Combined and Sanitized Lua script generated on {mocked_now.isoformat()}" in content
     assert "ProjectNS = {}" in content
     assert 'print("NS loaded")' not in content
     assert 'env.info("NS loaded")' in content
     assert "ProjectNS.data_loaded = true" in content
     assert "ProjectNS.utils_loaded = true" in content
-    assert content.find("ProjectNS.data_loaded = true") < content.find(
-        "ProjectNS.utils_loaded = true"
-    )
+    assert content.find("ProjectNS.data_loaded = true") < content.find("ProjectNS.utils_loaded = true")
     assert 'print("data print")' not in content
     assert 'env.info("data print")' in content
     assert 'print("utils print")' not in content
@@ -441,21 +360,15 @@ def test_build_project_missing_required_files(tmp_path):
     src_dir.mkdir()
     create_file(src_dir / "entry.lua", "-- entry --")
 
-    with pytest.raises(
-        FileNotFoundError, match=r"REQUIRED Namespace file 'ns.lua' not found"
-    ):
-        composer.build_project(
-            str(src_dir), "out.lua", None, "ns.lua", "entry.lua", None
-        )
+    with pytest.raises(FileNotFoundError, match=r"REQUIRED Namespace file 'ns.lua' not found"):
+        composer.build_project(str(src_dir), "out.lua", None, "ns.lua", "entry.lua", None)
 
     create_file(src_dir / "ns.lua", "-- namespace --")
     with pytest.raises(
         FileNotFoundError,
         match=r"REQUIRED Entrypoint file 'missing_entry.lua' not found",
     ):
-        composer.build_project(
-            str(src_dir), "out.lua", None, "ns.lua", "missing_entry.lua", None
-        )
+        composer.build_project(str(src_dir), "out.lua", None, "ns.lua", "missing_entry.lua", None)
 
 
 def test_build_project_goto_in_core_module_fails(tmp_path):
@@ -510,15 +423,10 @@ def test_build_project_complex_functional(tmp_path, mocker):
     #    This means header.lua print will NOT be sanitized by current main script logic. This is okay if intended.
     assert "-- Header for New Functional Test --" in content
     assert 'MyProjectNS.header_marker = "Header Was Here"' in content
-    assert (
-        'print("header.lua print check")' in content
-    )  # Print stays due to is_lua_module=False for header
+    assert 'print("header.lua print check")' in content  # Print stays due to is_lua_module=False for header
 
     # 2. Check for build info
-    assert (
-        f"-- Combined and Sanitized Lua script generated on {mocked_now.isoformat()}"
-        in content
-    )
+    assert f"-- Combined and Sanitized Lua script generated on {mocked_now.isoformat()}" in content
     assert "-- Header File: header.lua" in content
     assert "-- Namespace File: namespace.lua" in content
     assert "-- Entrypoint File: main.lua" in content
@@ -546,40 +454,20 @@ def test_build_project_complex_functional(tmp_path, mocker):
     for name, snippet in core_modules_expected_content.items():
         assert snippet in content, f"Snippet for {name} not found."
         simple_name = name.split(".")[-1]
-        assert f'print("{simple_name} print")' not in content, (
-            f"Original print from {name} still present."
-        )
+        assert f'print("{simple_name} print")' not in content, f"Original print from {name} still present."
 
         # Specific log checks based on module where they were added
         if name == "service":
-            assert (
-                'log.warning("Service is starting up with several features!")'
-                not in content
-            )
-            assert (
-                'env.warning("Service is starting up with several features!")'
-                in content
-            )
-            assert (
-                f'env.info("{simple_name} print")' in content
-            )  # The original print is now env.info
+            assert 'log.warning("Service is starting up with several features!")' not in content
+            assert 'env.warning("Service is starting up with several features!")' in content
+            assert f'env.info("{simple_name} print")' in content  # The original print is now env.info
         elif name == "feature.feature_five":
-            assert (
-                'log.error("Feature five encountered a simulated error condition!")'
-                not in content
-            )
-            assert (
-                'env.error("Feature five encountered a simulated error condition!")'
-                in content
-            )
-            assert (
-                f'env.info("{simple_name} print")' in content
-            )  # The original print is now env.info
+            assert 'log.error("Feature five encountered a simulated error condition!")' not in content
+            assert 'env.error("Feature five encountered a simulated error condition!")' in content
+            assert f'env.info("{simple_name} print")' in content  # The original print is now env.info
         else:
             # Default check for other modules that only had print
-            assert f'env.info("{simple_name} print")' in content, (
-                f"Transformed env.info for {name} not found."
-            )
+            assert f'env.info("{simple_name} print")' in content, f"Transformed env.info for {name} not found."
 
         assert f'require "{name}"' not in content, f"Self-require found for {name}"
 
@@ -632,9 +520,9 @@ def test_build_project_complex_functional(tmp_path, mocker):
     assert 'env.info("main.lua print check") -- This SHOULD be sanitized' in content
 
     # Check the overall structure of the if block using a simpler regex relying on \s+ and DOTALL
-    assert re.search(
-        r"if\s+MyProjectNS\.service_loaded\s+then.*?end", content, re.DOTALL
-    ), "Sanitized if block structure not found"
+    assert re.search(r"if\s+MyProjectNS\.service_loaded\s+then.*?end", content, re.DOTALL), (
+        "Sanitized if block structure not found"
+    )
 
     # Check original print statements are gone
     assert 'print("main.lua print check")' not in content
@@ -647,9 +535,7 @@ def test_build_project_complex_functional(tmp_path, mocker):
 
     # 6. Check Core Modules Order string in build info
     core_order_line_match = re.search(r"-- Core Modules Order: (.*)", content)
-    assert core_order_line_match is not None, (
-        "Core Modules Order comment line not found"
-    )
+    assert core_order_line_match is not None, "Core Modules Order comment line not found"
     sorted_core_modules_str = core_order_line_match.group(1)
 
     # All modules other than header, namespace, entrypoint are core

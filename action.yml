@@ -57,20 +57,25 @@ runs:
       run: |
         curl -LsSf https://astral.sh/uv/install.sh | sh
         echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+        uv --version
 
-    - name: Install Python dependencies for composer script
+    - name: Sync environment for composer script
       shell: bash
       run: |
-        uv pip install -r "${{ github.action_path }}/requirements.txt"
+        # cd to the action path because pyproject.toml and uv.lock are there
+        cd "${{ github.action_path }}"
+        uv sync --all-extras
 
     - name: Run DCS Lua Compose Script
       shell: bash
-
       run: |
-        uv python "${{ github.action_path }}/composer.py" \
-          "${{ inputs.source_directory }}" \
-          "${{ inputs.output_file }}" \
+        # cd to the action path to ensure uv run finds the synced environment
+        cd "${{ github.action_path }}"
+        uv run python composer.py \
+          "${{ github.workspace }}/${{ inputs.source_directory }}" \
+          "${{ github.workspace }}/${{ inputs.output_file }}" \
           --namespace "${{ inputs.namespace_file }}" \
           --entrypoint "${{ inputs.entrypoint_file }}" \
           ${{ inputs.header_file != '' && format('--header "{0}"', inputs.header_file) || '' }} \
-          ${{ inputs.footer_file != '' && format('--footer "{0}"', inputs.footer_file) || '' }} 
+          ${{ inputs.footer_file != '' && format('--footer "{0}"', inputs.footer_file) || '' }} \
+          --dcs-strict-sanitize "${{ inputs.dcs_strict_sanitize }}" 
