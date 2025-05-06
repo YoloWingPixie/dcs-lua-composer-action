@@ -104,8 +104,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.version_reader.outputs.version_tag }}
+          tag_name: ${{ steps.version_reader.outputs.next_major_tag }}
           release_name: Release ${{ steps.version_reader.outputs.version_tag }}
-          body: "Automated release for version ${{ steps.version_reader.outputs.version_tag }}. Users can pin to ${{ steps.version_reader.outputs.next_major_tag }} for the latest updates in this sequence."
+          body: |
+            Automated release for version ${{ steps.version_reader.outputs.version_tag }}.
+            Users are encouraged to use the `${{ steps.version_reader.outputs.next_major_tag }}` tag to receive the latest updates for this major version sequence.
+            Full SemVer tag for this release: `${{ steps.version_reader.outputs.version_tag }}`
           draft: false
           prerelease: false 
