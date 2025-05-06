@@ -1,7 +1,9 @@
 import argparse
 import datetime
+import io
 import os
 import re
+import sys
 import warnings
 from collections import defaultdict
 from pathlib import Path
@@ -83,21 +85,23 @@ def parse_dependencies(file_path, src_dir_path):
         with open(file_path, encoding="utf-8") as f:
             content = f.read()
 
-        print(f"DEBUG: Calling ast.parse in PARSE_DEPENDENCIES for {file_path}")  # DEBUG PRINT
-        tree = ast.parse(content)
+        # print(f"DEBUG: Calling ast.parse in PARSE_DEPENDENCIES for {file_path}") # Optional debug
+
+        # Suppress stdout during ast.parse
+        old_stdout = sys.stdout
+        sys.stdout = io.StringIO()
+        try:
+            tree = ast.parse(content)
+        finally:
+            sys.stdout = old_stdout  # Restore stdout
+            # captured_str = captured_output.getvalue() # For debugging the suppressed output
+            # if captured_str: print(f"Suppressed from parse_dependencies({file_path}): {captured_str}")
 
         for node in ast.walk(tree):
-            # We are looking for Call nodes, where the function being called is a Name node with id 'require'
             if isinstance(node, astnodes.Call) and isinstance(node.func, astnodes.Name) and node.func.id == "require":
-                # Check if arguments exist and the first argument is a String node
                 if node.args and isinstance(node.args[0], astnodes.String):
                     dependencies.add(node.args[0].s)
-                # DCS might use require(Modulename) without quotes if Modulename is a global var
-                # but this script assumes standard require "module.name" or require("module.name")
-                # For simplicity, we'll stick to string arguments for require.
-
     except Exception as e:
-        # Catch luaparser specific errors if any, or file errors
         print(f"Error reading or parsing dependencies from {file_path} with luaparser: {e}")
     return dependencies
 
@@ -181,8 +185,18 @@ def sanitize_content(content, file_path, is_lua_module=True, dcs_strict_sanitize
     original_content_for_error_reporting = content  # Keep a copy for error context
 
     try:
-        print(f"DEBUG: Calling ast.parse in SANITIZE_CONTENT for {file_path}")  # DEBUG PRINT
-        tree = ast.parse(content)
+        # print(f"DEBUG: Calling ast.parse in SANITIZE_CONTENT for {file_path}") # Optional debug
+
+        # Suppress stdout during ast.parse for goto check
+        old_stdout_sanitize = sys.stdout
+        sys.stdout = io.StringIO()
+        try:
+            tree = ast.parse(content)
+        finally:
+            sys.stdout = old_stdout_sanitize  # Restore stdout
+            # captured_str_sanitize = captured_output_sanitize.getvalue()
+            # if captured_str_sanitize: print(f"Suppressed from sanitize_content({file_path}): {captured_str_sanitize}")
+
         for node in ast.walk(tree):
             # 1. Goto Check (always active for Lua modules)
             if isinstance(node, astnodes.Goto):

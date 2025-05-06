@@ -64,6 +64,8 @@ runs:
 
     - name: Run DCS Lua Compose Script
       shell: bash
+      env:
+        PYTHONWARNINGS: "ignore:.*invalid escape sequence.*:SyntaxWarning:luaparser\.printers"
       run: |
         # cd to the action path to ensure uv run finds the synced environment
         cd "${{ github.action_path }}"
