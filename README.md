@@ -1,6 +1,6 @@
 # DCS Lua Composer Action
 
-[![CI Status](https://github.com/yolowingpixie/dcs-lua-composer-action/actions/workflows/test-action.yml/badge.svg)](https://github.com/yolowingpixie/dcs-lua-composer-action/actions/workflows/test-action.yml)
+[![CI Status](https://github.com/yolowingpixie/dcs-lua-composer-action/actions/workflows/ci.yml/badge.svg)](https://github.com/yolowingpixie/dcs-lua-composer-action/actions/workflows/test-action.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 This GitHub Action takes a modular DCS World Lua project from a source directory and intelligently composes it into a single, sanitized Lua file suitable for direct use in a mission. It handles dependency resolution, specific file ordering (header, namespace, entrypoint, footer), and applies DCS-friendly sanitization.
