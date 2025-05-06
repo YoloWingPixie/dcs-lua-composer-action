@@ -11,9 +11,15 @@ import luaparser.astnodes as astnodes
 
 # Suppress specific SyntaxWarnings from luaparser.printers
 # Match common invalid escape sequence messages if they are consistent, or by module and category
-warnings.filterwarnings("ignore", message=r".*invalid escape sequence '\\c'.*", category=SyntaxWarning, module="luaparser.printers")
-warnings.filterwarnings("ignore", message=r".*invalid escape sequence '\\8'.*", category=SyntaxWarning, module="luaparser.printers")
-warnings.filterwarnings("ignore", message=r".*invalid escape sequence '\\9'.*", category=SyntaxWarning, module="luaparser.printers")
+warnings.filterwarnings(
+    "ignore", message=r".*invalid escape sequence '\\c'.*", category=SyntaxWarning, module="luaparser.printers"
+)
+warnings.filterwarnings(
+    "ignore", message=r".*invalid escape sequence '\\8'.*", category=SyntaxWarning, module="luaparser.printers"
+)
+warnings.filterwarnings(
+    "ignore", message=r".*invalid escape sequence '\\9'.*", category=SyntaxWarning, module="luaparser.printers"
+)
 # Fallback if messages are less predictable but we trust the module source of warning:
 # warnings.filterwarnings("ignore", category=SyntaxWarning, module="luaparser\.printers")
 
@@ -74,10 +80,10 @@ def parse_dependencies(file_path, src_dir_path):
     """Parses a Lua file to find its dependencies (required modules) using luaparser."""
     dependencies = set()
     try:
-        with open(file_path, encoding='utf-8') as f:
+        with open(file_path, encoding="utf-8") as f:
             content = f.read()
 
-        print(f"DEBUG: Calling ast.parse in PARSE_DEPENDENCIES for {file_path}") # DEBUG PRINT
+        print(f"DEBUG: Calling ast.parse in PARSE_DEPENDENCIES for {file_path}")  # DEBUG PRINT
         tree = ast.parse(content)
 
         for node in ast.walk(tree):
@@ -175,7 +181,7 @@ def sanitize_content(content, file_path, is_lua_module=True, dcs_strict_sanitize
     original_content_for_error_reporting = content  # Keep a copy for error context
 
     try:
-        print(f"DEBUG: Calling ast.parse in SANITIZE_CONTENT for {file_path}") # DEBUG PRINT
+        print(f"DEBUG: Calling ast.parse in SANITIZE_CONTENT for {file_path}")  # DEBUG PRINT
         tree = ast.parse(content)
         for node in ast.walk(tree):
             # 1. Goto Check (always active for Lua modules)

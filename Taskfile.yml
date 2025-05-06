@@ -11,6 +11,7 @@ tasks:
       - task: sync
       - task: lint
       - task: test
+      - task: format
     silent: true # Hide task execution lines for default task
 
   setup:
@@ -47,7 +48,7 @@ tasks:
     desc: "Lint Python code with Ruff via uv run."
     deps: [sync]
     cmds:
-      - uv run ruff check .
+      - uv run ruff check . --fix
       - uv run ruff format --check .
     sources:
       - composer.py
