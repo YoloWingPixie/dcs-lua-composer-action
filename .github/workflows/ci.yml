@@ -10,7 +10,7 @@ on:
       - 'requirements.txt'
       - 'requirements-dev.txt'
       - 'tests/test_composer.py'
-      - '.github/workflows/test-action.yml'
+      - '.github/workflows/ci.yml'
   pull_request:
     paths:
       - 'action.yml'
@@ -18,7 +18,7 @@ on:
       - 'requirements.txt'
       - 'requirements-dev.txt'
       - 'tests/test_composer.py'
-      - '.github/workflows/test-action.yml'
+      - '.github/workflows/ci.yml'
   workflow_dispatch:
 
 jobs:
@@ -34,6 +34,16 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0 
+
+      - name: Validate VERSION file (no trailing whitespace)
+        shell: bash
+        run: |
+          VERSION_CONTENT=$(cat VERSION)
+          if [[ "$VERSION_CONTENT" != "$(echo -n "$VERSION_CONTENT" | sed 's/[[:space:]]*$//')" ]]; then
+            echo "::error::VERSION file has trailing whitespace. Please remove it."
+            exit 1
+          fi
+          echo "VERSION file whitespace check passed."
 
       - name: Check VERSION file updated on PR
         if: github.event_name == 'pull_request'
