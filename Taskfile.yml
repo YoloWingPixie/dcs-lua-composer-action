@@ -11,6 +11,7 @@ tasks:
       - task: setup
       - task: lint
       - task: test
+      - task: format
     silent: true # Hide task execution lines for default task
 
   setup:

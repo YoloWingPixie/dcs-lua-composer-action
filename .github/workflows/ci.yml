@@ -23,6 +23,7 @@ on:
 
 jobs:
   run-python-unit-tests:
+    name: Run Python Unit Tests
     runs-on: ubuntu-latest
     strategy:
       matrix:
