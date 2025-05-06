@@ -1,0 +1,64 @@
+name: Test DCS Lua Composer Script Logic
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'action.yml'
+      - 'composer.py'
+      - 'tests/test_composer.py'
+      - '.github/workflows/test-action.yml'
+  pull_request:
+    paths:
+      - 'action.yml'
+      - 'composer.py'
+      - 'tests/test_composer.py'
+      - '.github/workflows/test-action.yml'
+  workflow_dispatch:
+
+jobs:
+  run-python-unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check VERSION file updated on PR
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "Base ref: ${{ github.base_ref }}"
+          git fetch origin ${{ github.base_ref }}
+          
+          BASE_VERSION=$(git show origin/${{ github.base_ref }}:VERSION)
+          echo "Base VERSION: $BASE_VERSION"
+          
+          CURRENT_VERSION=$(cat VERSION)
+          echo "Current VERSION: $CURRENT_VERSION"
+          
+          if [[ "$CURRENT_VERSION" == "$BASE_VERSION" ]]; then
+            echo "::error::VERSION file has not been updated in this PR compared to branch '${{ github.base_ref }}'. Please increment the version." 
+            exit 1
+          else
+            echo "VERSION file has been updated. Proceeding..."
+          fi
+        shell: bash
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install uv and pytest
+        shell: bash
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          uv pip install pytest pytest-mock
+      
+      - name: Run Pytest
+        shell: bash
+        run: |
+          uv pytest tests/test_composer.py 
