@@ -45,7 +45,6 @@ DCS World mission scripting often involves loading a single Lua file. As project
 | `namespace_file`        | Required: Relative path *from source_directory* to the namespace definition file. Sanitized.                                              | `true`   | *N/A*                       |
 | `entrypoint_file`       | Required: Relative path *from source_directory* to the main entry point file. Loaded after core modules. Sanitized.                         | `true`   | *N/A*                       |
 | `footer_file`           | Optional: Relative path *from source_directory* to the footer file. Included verbatim at the bottom.                                      | `false`  | `''`                         |
-| `python_version`        | Python version to use for the build script.                                                                                               | `false`  | `3.10`                      |
 | `dcs_strict_sanitize`   | If true (default), fails build on os, io, lfs usage. `loadlib` is always removed with a warning. Print/log are always transformed.      | `false`  | `true`                      |
 
 ## Outputs
@@ -88,7 +87,6 @@ jobs:
           namespace_file: 'core/my_namespace.lua'             # Required, path relative to source_directory
           entrypoint_file: 'main.lua'                           # Required, path relative to source_directory
           # footer_file: 'my_footer.txt'                        # Optional, path relative to source_directory
-          # python_version: '3.11'                              # Optional
           # dcs_strict_sanitize: 'false'                        # Optional, default is true
 
       - name: Verify Build Output

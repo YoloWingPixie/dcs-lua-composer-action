@@ -1,7 +1,7 @@
 version: '3'
 
 vars:
-  PYTHON_VERSION: '3.10' # Keep consistent with action.yml
+  PYTHON_VERSION: '3.12' # Standardize on 3.12
   VENV_DIR: .venv
 
 tasks:
@@ -11,6 +11,7 @@ tasks:
       - task: sync
       - task: lint
       - task: test
+      - task: format
     silent: true # Hide task execution lines for default task
 
   setup:
@@ -47,7 +48,7 @@ tasks:
     desc: "Lint Python code with Ruff via uv run."
     deps: [sync]
     cmds:
-      - uv run ruff check .
+      - uv run ruff check . --fix
       - uv run ruff format --check .
     sources:
       - composer.py

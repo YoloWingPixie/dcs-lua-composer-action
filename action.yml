@@ -30,10 +30,6 @@ inputs:
     description: 'Optional: Relative path from source_directory to the footer file. Included verbatim at the bottom.'
     required: false
     default: ''
-  python_version:
-    description: 'Python version to use for the build script.'
-    required: false
-    default: '3.12'
   dcs_strict_sanitize:
     description: 'If true (default), fails build on os, io, lfs usage. `loadlib` is always removed with a warning. Print/log are always transformed.'
     required: false
@@ -50,7 +46,7 @@ runs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: ${{ inputs.python_version }}
+        python-version: '3.12'
 
     - name: Install uv
       shell: bash
