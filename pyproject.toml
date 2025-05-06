@@ -1,0 +1,37 @@
+[project]
+name = "dcs-lua-composer-action"
+version = "0.1.0" # This will be sourced from the VERSION file in practice by cd.yml
+description = "Builds a single, sanitized Lua file by composing header, namespace, core modules, entrypoint, and footer sections for DCS World."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [
+    { name = "YoloWingPixie", email = "your_email@example.com" }, # Replace with actual email if desired
+]
+
+dependencies = [
+    "luaparser>=3.2.1", # Corresponds to Lua 5.3/5.4 grammar
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-mock",
+    "ruff",
+]
+
+[project.urls]
+Homepage = "https://github.com/yolowingpixie/dcs-lua-composer-action"
+Issues = "https://github.com/yolowingpixie/dcs-lua-composer-action/issues"
+
+[tool.ruff]
+line-length = 120
+# Add any specific ruff configurations here if needed
+# e.g., select = ["E", "F", "W", "I"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "C4", "ISC"]
+ignore = ["E501"] # Handled by formatter
+
+[tool.ruff.format]
+quote-style = "double" 

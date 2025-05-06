@@ -7,27 +7,27 @@ on:
     paths:
       - 'action.yml'
       - 'composer.py'
-      - 'requirements.txt'
-      - 'requirements-dev.txt'
+      - 'pyproject.toml'
+      - 'uv.lock'
       - 'tests/test_composer.py'
       - '.github/workflows/ci.yml'
   pull_request:
     paths:
       - 'action.yml'
       - 'composer.py'
-      - 'requirements.txt'
-      - 'requirements-dev.txt'
+      - 'pyproject.toml'
+      - 'uv.lock'
       - 'tests/test_composer.py'
       - '.github/workflows/ci.yml'
   workflow_dispatch:
 
 jobs:
-  run-python-unit-tests:
-    name: Run Python Unit Tests
+  test-and-lint:
+    name: Test, Lint & Format Check
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.12'] 
+        python-version: ['3.12']
 
     steps:
       - name: Checkout Repository
@@ -51,13 +51,17 @@ jobs:
           echo "Base ref: ${{ github.base_ref }}"
           git fetch origin ${{ github.base_ref }}
           
-          BASE_VERSION=$(git show origin/${{ github.base_ref }}:VERSION)
-          echo "Base VERSION: $BASE_VERSION"
+          BASE_VERSION=$(cat VERSION) # Read current branch version first
+          # Temporarily checkout base ref to read its VERSION file
+          git checkout origin/${{ github.base_ref }} -- VERSION
+          PR_BASE_VERSION=$(cat VERSION)
+          # Checkout back to PR commit's VERSION file state
+          git checkout HEAD -- VERSION
+
+          echo "Base (origin/${{ github.base_ref }}) VERSION: $PR_BASE_VERSION"
+          echo "Current PR branch VERSION: $BASE_VERSION"
           
-          CURRENT_VERSION=$(cat VERSION)
-          echo "Current VERSION: $CURRENT_VERSION"
-          
-          if [[ "$CURRENT_VERSION" == "$BASE_VERSION" ]]; then
+          if [[ "$BASE_VERSION" == "$PR_BASE_VERSION" ]]; then
             echo "::error::VERSION file has not been updated in this PR compared to branch '${{ github.base_ref }}'. Please increment the version." 
             exit 1
           else
@@ -75,62 +79,29 @@ jobs:
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          uv --version # Verify installation
+          uv --version 
 
-      - name: Create venv and install dependencies with uv
+      - name: Sync environment with uv
         shell: bash
         run: |
-          uv venv .venv --python ${{ matrix.python-version }}
-          source .venv/bin/activate
-          echo "Python from venv: $(python --version)"
-          echo "Installing runtime dependencies..."
-          uv pip install -r requirements.txt
-          echo "Installing development dependencies..."
-          uv pip install -r requirements-dev.txt
+          uv sync --all-extras # Installs from uv.lock (main and dev dependencies)
+          echo "Python from venv: $(uv run python --version)"
           echo "Verifying pytest installation..."
-          python -m pytest --version
+          uv run pytest --version
+          echo "Verifying ruff installation..."
+          uv run ruff --version
       
       - name: Run Pytest
         shell: bash
         run: |
-          source .venv/bin/activate # Ensure venv is active for this step too
-          echo "Running tests with: $(which python)"
-          python -m pytest tests/test_composer.py 
-
-  lint-and-format-check:
-    name: Lint and Format Check
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ['3.12']
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install uv
-        shell: bash
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          uv --version
-
-      - name: Install Ruff
-        shell: bash
-        run: |
-          # We only need ruff for this job
-          uv pip install ruff --system
-
+          uv run pytest tests/test_composer.py
+      
       - name: Run Ruff Linter
         shell: bash
         run: |
-          ruff check .
+          uv run ruff check .
 
       - name: Run Ruff Formatter Check
         shell: bash
         run: |
-          ruff format --check . 
+          uv run ruff format --check . 
