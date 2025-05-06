@@ -1,2 +1,2 @@
 MyProjectNS.component_three_loaded = true
-print("component_three print") 
+print("component_three print")

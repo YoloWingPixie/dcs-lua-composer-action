@@ -94,7 +94,7 @@ jobs:
           echo "Built Lua file path: ${{ steps.composer_build.outputs.built_file_path }}"
           ls -lh ${{ steps.composer_build.outputs.built_file_path }}
           # Add more checks if needed (e.g., line count, specific content)
-      
+
       - name: Upload Mission Script Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -111,9 +111,9 @@ If you are developing this action or using it within the same repository where t
       - name: Compose DCS Lua Script (Local)
         id: composer_build
         # If action.yml is in the root of your repository:
-        # uses: ./ 
+        # uses: ./
         # If action.yml is in .github/actions/dcs-lua-composer/ within your repository:
-        uses: ./.github/actions/dcs-lua-composer 
+        uses: ./.github/actions/dcs-lua-composer
         with:
           # ... your inputs ...
 ```
@@ -136,6 +136,14 @@ This project uses `Taskfile.yml` ([Task](https://taskfile.dev/)) for managing de
     task test
     ```
     Or simply `task` for the default build and test.
+
+    To install and use pre-commit hooks (for automatic linting/formatting before commits):
+    ```bash
+    task pre-commit-install # Installs hooks into your .git/hooks
+    # Now, hooks will run automatically on `git commit`
+    # To run all hooks manually on all files:
+    task pre-commit-run
+    ```
 
 ## License
 

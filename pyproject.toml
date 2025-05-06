@@ -18,6 +18,8 @@ dev = [
     "pytest",
     "pytest-mock",
     "ruff",
+    "yamllint",
+    "pre-commit",
 ]
 
 [project.urls]
@@ -34,4 +36,4 @@ select = ["E", "F", "W", "I", "UP", "C4", "ISC"]
 ignore = ["E501"] # Handled by formatter
 
 [tool.ruff.format]
-quote-style = "double" 
+quote-style = "double"
