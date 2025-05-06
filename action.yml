@@ -1,0 +1,76 @@
+# action.yml
+name: 'DCS World Lua Composer'
+description: 'Builds a single, sanitized Lua file by composing header, namespace, core modules, entrypoint, and footer sections for DCS World.'
+author: 'YoloWingPixie'
+
+branding:
+  icon: 'layers'
+  color: 'purple'
+
+inputs:
+  source_directory:
+    description: 'Source directory containing all Lua and text files. Relative to the repository root.'
+    required: true
+    default: 'src'
+  output_file:
+    description: 'Path for the final combined Lua file. Relative to the repository root.'
+    required: true
+    default: 'dist/mission_script.lua'
+  header_file:
+    description: 'Optional: Relative path from source_directory to the header file. Included verbatim at the top.'
+    required: false
+    default: ''
+  namespace_file:
+    description: 'Required: Relative path from source_directory to the namespace definition file.'
+    required: true
+  entrypoint_file:
+    description: 'Required: Relative path from source_directory to the main entry point file.'
+    required: true
+  footer_file:
+    description: 'Optional: Relative path from source_directory to the footer file. Included verbatim at the bottom.'
+    required: false
+    default: ''
+  python_version:
+    description: 'Python version to use for the build script.'
+    required: false
+    default: '3.12'
+  dcs_strict_sanitize:
+    description: 'If true (default), fails build on os, io, lfs usage. `loadlib` is always removed with a warning. Print/log are always transformed.'
+    required: false
+    default: 'true'
+
+outputs:
+  built_file_path:
+    description: 'The path to the generated Lua file.'
+    value: ${{ inputs.output_file }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python_version }}
+
+    - name: Install uv
+      shell: bash
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+    - name: Install Python dependencies for composer script
+      shell: bash
+      run: |
+        uv pip install -r "${{ github.action_path }}/requirements.txt"
+
+    - name: Run DCS Lua Compose Script
+      shell: bash
+
+      run: |
+        uv python "${{ github.action_path }}/composer.py" \
+          "${{ inputs.source_directory }}" \
+          "${{ inputs.output_file }}" \
+          --namespace "${{ inputs.namespace_file }}" \
+          --entrypoint "${{ inputs.entrypoint_file }}" \
+          ${{ inputs.header_file != '' && format('--header "{0}"', inputs.header_file) || '' }} \
+          ${{ inputs.footer_file != '' && format('--footer "{0}"', inputs.footer_file) || '' }} 

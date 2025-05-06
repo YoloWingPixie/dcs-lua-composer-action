@@ -1,0 +1,78 @@
+version: '3'
+
+vars:
+  PYTHON_VERSION: '3.10' # Keep consistent with action.yml
+  VENV_DIR: .venv
+
+tasks:
+  default:
+    desc: "Install dependencies and run tests."
+    cmds:
+      - task: setup
+      - task: lint
+      - task: test
+      - task: format
+    silent: true # Hide task execution lines for default task
+
+  setup:
+    desc: "Set up Python virtual environment ({{.VENV_DIR}}) and install dependencies."
+    cmds:
+      - echo "Ensuring virtual environment {{.VENV_DIR}} exists..."
+      - uv venv {{.VENV_DIR}} --python {{.PYTHON_VERSION}}
+      - echo "Installing/updating dependencies into {{.VENV_DIR}}..."
+      - uv pip install -r requirements-dev.txt
+    sources:
+      - requirements-dev.txt
+    generates:
+      # Check for a file that uv venv creates
+      - '{{.VENV_DIR}}/pyvenv.cfg'
+    status:
+      # Check if pytest is importable using the venv python
+      - '{{if OS | eq "windows"}}{{.VENV_DIR}}\Scripts\python{{else}}{{.VENV_DIR}}/bin/python{{end}} -c "import sys; import pytest"'
+
+  test:
+    desc: "Run tests using pytest in the virtual environment (runs setup first)."
+    deps: [setup]
+    cmds:
+      # Run pytest via uv run to ensure it uses the venv
+      - uv run pytest tests/test_composer.py
+    sources:
+      - composer.py
+      # Globs to trigger re-run if source or test files change
+      - tests/**/*.py
+      - tests/functional_test_project/src/**/*.lua
+      - tests/functional_test_project/src/**/*.txt
+
+  lint:
+    desc: "Lint Python code with Ruff."
+    deps: [setup] # Depends on setup to ensure ruff is installed
+    cmds:
+      - uv run ruff check . --fix
+    sources:
+      - composer.py
+      - tests/**/*.py
+      - action.yml
+      - Taskfile.yml
+
+  format:
+    desc: "Format Python code with Ruff."
+    deps: [setup]
+    cmds:
+      - uv run ruff format .
+    sources:
+      - composer.py
+      - tests/**/*.py
+      - action.yml
+      - Taskfile.yml
+
+  clean:
+    desc: "Remove virtual environment and other generated files."
+    cmds:
+      - echo "Removing {{.VENV_DIR}} and dist directories..."
+      - rm -rf {{.VENV_DIR}}
+      - rm -rf dist
+      # Using '|| true' to prevent errors if patterns don't match any files
+      - echo "Removing __pycache__ directories and *.pyc/*.pyo files..."
+      - find . -type d -name '__pycache__' -exec rm -r {} + || true
+      - find . -type f \( -name '*.pyc' -o -name '*.pyo' \) -delete || true
+    silent: true # Hide the find/rm commands unless there's an error 

@@ -1,0 +1,91 @@
+name: Continuous Deployment
+
+on:
+  push:
+    branches:
+      - main
+    # Only run CD if specific files impacting the action are changed
+    paths:
+      - 'action.yml'
+      - 'composer.py'
+      - 'requirements.txt'
+      - 'VERSION'
+      - '.github/workflows/cd.yml'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # To push tags and create releases
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required to get all history for tags
+          token: ${{ secrets.GITHUB_TOKEN }} 
+
+      - name: Setup Git User
+        run: |
+          git config user.name "GitHub Action Bot"
+          git config user.email "actions@github.com"
+
+      - name: Read Version and Determine Tags
+        id: version_reader
+        run: |
+          # Ensure tags are fetched
+          git fetch --tags
+          
+          CURRENT_VERSION=$(cat VERSION | tr -d '\r\n') 
+          echo "Version from file: $CURRENT_VERSION"
+          
+          # Validate format
+          if ! [[ "$CURRENT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid version format in VERSION file: $CURRENT_VERSION. Expected X.Y.Z"
+            exit 1
+          fi
+          
+          # Determine next sequential major tag (v1, v2, v3...)
+          LATEST_V_TAG=$(git tag --list 'v[0-9]*' | sort -V | tail -n 1)
+          if [[ -z "$LATEST_V_TAG" ]]; then
+            echo "No existing v# tags found. Starting with v1."
+            NEXT_V_NUMBER=1
+          else
+            echo "Latest sequential tag found: $LATEST_V_TAG"
+            LATEST_V_NUMBER=$(echo $LATEST_V_TAG | sed 's/^v//')
+            NEXT_V_NUMBER=$((LATEST_V_NUMBER + 1))
+          fi
+          NEXT_MAJOR_TAG="v$NEXT_V_NUMBER"
+          echo "Next sequential major tag: $NEXT_MAJOR_TAG"
+
+          # Set outputs 
+          echo "current_version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
+          echo "version_tag=v$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
+          echo "next_major_tag=$NEXT_MAJOR_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Create new version tag (vX.Y.Z)
+        run: |
+          echo "Creating tag: ${{ steps.version_reader.outputs.version_tag }}"
+          git tag ${{ steps.version_reader.outputs.version_tag }}
+          git push origin ${{ steps.version_reader.outputs.version_tag }}
+
+      - name: Update Sequential Major Tag (vN)
+        run: |
+          NEXT_MAJOR_TAG=${{ steps.version_reader.outputs.next_major_tag }}
+          VERSION_TAG=${{ steps.version_reader.outputs.version_tag }}
+          echo "Updating sequential major tag: $NEXT_MAJOR_TAG to point to commit of $VERSION_TAG"
+          
+          # Force create/update the sequential major tag locally
+          git tag -f $NEXT_MAJOR_TAG $VERSION_TAG 
+          # Force push the sequential major tag to the remote
+          git push origin $NEXT_MAJOR_TAG -f
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.version_reader.outputs.version_tag }}
+          release_name: Release ${{ steps.version_reader.outputs.version_tag }}
+          body: "Automated release for version ${{ steps.version_reader.outputs.version_tag }}. Users can pin to ${{ steps.version_reader.outputs.next_major_tag }} for the latest updates in this sequence."
+          draft: false
+          prerelease: false 
