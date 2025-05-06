@@ -10,7 +10,7 @@ on:
       - 'requirements.txt'
       - 'requirements-dev.txt'
       - 'tests/test_composer.py'
-      - '.github/workflows/test-action.yml'
+      - '.github/workflows/ci.yml'
   pull_request:
     paths:
       - 'action.yml'
@@ -18,7 +18,7 @@ on:
       - 'requirements.txt'
       - 'requirements-dev.txt'
       - 'tests/test_composer.py'
-      - '.github/workflows/test-action.yml'
+      - '.github/workflows/ci.yml'
   workflow_dispatch:
 
 jobs:
