@@ -1,0 +1,65 @@
+# .github/workflows/build_dcs_lua.yml
+name: Build DCS Lua Script with Composer
+
+on:
+  push:
+    branches: [ main ] # Or your primary branch
+    paths:
+      - 'src/**' # Adjust if your source_directory is different
+      - 'scripts/**' # If header/footer files are here
+      - '.github/workflows/build_dcs_lua.yml'
+      # If action is local, include its path too:
+      # - '.github/actions/dcs-lua-composer/**'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'scripts/**'
+      - '.github/workflows/build_dcs_lua.yml'
+      # - '.github/actions/dcs-lua-composer/**'
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  build-lua:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4 # Current version as of May 2025, verify latest
+
+      # === Option 1: If your action is in a separate public/private repository ===
+      # - name: Compose DCS Lua Script
+      #   uses: YourGitHubUsername/your-dcs-lua-composer-repo@v1 # Replace with your action's repo and version
+      #   id: build_step
+      #   with:
+      #     source_directory: 'src'
+      #     output_file: 'dist/MyComposedMission.lua'
+      #     header_file: 'assets/mission_header.txt' # Optional
+      #     namespace_file: 'core/project_namespace.lua' # Required
+      #     entrypoint_file: 'core/main.lua' # Required
+      #     footer_file: 'assets/mission_footer.txt' # Optional
+
+      # === Option 2: If action.yml and build.py are within this project's .github/actions/ directory ===
+      # (e.g., .github/actions/dcs-lua-composer/action.yml and .github/actions/dcs-lua-composer/build.py)
+      - name: Compose DCS Lua Script (Local Action)
+        uses: ./.github/actions/dcs-lua-composer # Path to your local action directory
+        id: build_step
+        with:
+          source_directory: 'src' # Example: Lua modules are in 'src/'
+          output_file: 'dist/MyComposedMission.lua'
+          # Example file paths, relative to 'source_directory'
+          header_file: 'mission_header.txt' # e.g., src/mission_header.txt
+          namespace_file: 'core/namespace.lua' # e.g., src/core/namespace.lua
+          entrypoint_file: 'main.lua' # e.g., src/main.lua
+          footer_file: 'mission_footer.txt' # e.g., src/mission_footer.txt
+
+      - name: Verify Build Output
+        run: |
+          echo "Built Lua file path: ${{ steps.build_step.outputs.built_file_path }}"
+          ls -lh ${{ steps.build_step.outputs.built_file_path }}
+          # Add more checks if needed, e.g., line count or presence of specific markers
+
+      - name: Upload Built Lua Script Artifact
+        uses: actions/upload-artifact@v4 # Current version as of May 2025, verify latest
+        with:
+          name: dcs-mission-script-${{ github.run_id }}-${{ github.sha }}
+          path: ${{ steps.build_step.outputs.built_file_path }}
+          if-no-files-found: error # Fail if the output file isn't created 

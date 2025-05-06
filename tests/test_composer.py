@@ -1,5 +1,4 @@
 import pytest
-import os
 import re
 from pathlib import Path
 import datetime # Import at the top level of the test file
@@ -8,10 +7,10 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import composer
 
-# Helper function to create a file with content (if needed by other tests, otherwise can be removed if only used by deleted fixtures)
-# def create_file(path: Path, content: str):
-#     path.parent.mkdir(parents=True, exist_ok=True)
-#     path.write_text(content, encoding='utf-8')
+# Helper function to create a file with content
+def create_file(path: Path, content: str):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding='utf-8')
 
 # --- Tests for find_lua_files ---
 def test_find_lua_files_empty(tmp_path):
@@ -67,24 +66,19 @@ def test_parse_dependencies_none(tmp_path):
     src_dir = tmp_path / "src"
     file_path = src_dir / "main.lua"
     # Re-add _create_file or use the one from find_lua_files_basic if it was meant to be global
-    def _create_file(path: Path, content: str): # Scoped helper
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content, encoding='utf-8')
-    _create_file(file_path, "print('hello')")
+    create_file(file_path, "print('hello')")
     assert composer.parse_dependencies(file_path, src_dir) == set()
 
 def test_parse_dependencies_simple(tmp_path):
     src_dir = tmp_path / "src"
     file_path = src_dir / "main.lua"
-    def _create_file(path: Path, content: str): path.parent.mkdir(parents=True, exist_ok=True); path.write_text(content, encoding='utf-8')
-    _create_file(file_path, '''require "module1"\nrequire("module2")''')
+    create_file(file_path, '''require "module1"\nrequire("module2")''')
     assert composer.parse_dependencies(file_path, src_dir) == {"module1", "module2"}
 
 def test_parse_dependencies_with_comments_and_variants(tmp_path):
     src_dir = tmp_path / "src"
     file_path = src_dir / "main.lua"
-    def _create_file(path: Path, content: str): path.parent.mkdir(parents=True, exist_ok=True); path.write_text(content, encoding='utf-8')
-    _create_file(file_path, '''
+    create_file(file_path, '''
 -- require "commented_out"
 local mod1 = require('module.one') -- comment after
 require "module.two"; -- with semicolon
@@ -261,13 +255,12 @@ def sample_project_structure_basic(tmp_path):
     # This fixture is for the older basic_composition test, ensure it uses its own sub-tmp_path
     src = tmp_path / "basic_test_project"
     # Re-add _create_file or ensure it's accessible globally in this test file
-    def _create_file(path: Path, content: str): path.parent.mkdir(parents=True, exist_ok=True); path.write_text(content, encoding='utf-8')
-    _create_file(src / "header.txt", "-- HEADER --")
-    _create_file(src / "ns" / "main_ns.lua", "ProjectNS = {}\nprint(\"NS loaded\")")
-    _create_file(src / "core" / "utils.lua", '''require "core.data"\nProjectNS.utils_loaded = true\nprint("utils print")''')
-    _create_file(src / "core" / "data.lua", "ProjectNS.data_loaded = true\nprint(\"data print\")")
-    _create_file(src / "app" / "main_app.lua", '''require "core.utils"\nProjectNS.app_start = function() print("App Start") end''')
-    _create_file(src / "footer.txt", "-- FOOTER --")
+    create_file(src / "header.txt", "-- HEADER --")
+    create_file(src / "ns" / "main_ns.lua", "ProjectNS = {}\nprint(\"NS loaded\")")
+    create_file(src / "core" / "utils.lua", '''require "core.data"\nProjectNS.utils_loaded = true\nprint("utils print")''')
+    create_file(src / "core" / "data.lua", "ProjectNS.data_loaded = true\nprint(\"data print\")")
+    create_file(src / "app" / "main_app.lua", '''require "core.utils"\nProjectNS.app_start = function() print("App Start") end''')
+    create_file(src / "footer.txt", "-- FOOTER --")
     return src
 
 def test_build_project_basic_composition(tmp_path, sample_project_structure_basic, mocker):
@@ -308,22 +301,20 @@ def test_build_project_basic_composition(tmp_path, sample_project_structure_basi
 def test_build_project_missing_required_files(tmp_path):
     src_dir = tmp_path / "src"
     src_dir.mkdir()
-    def _create_file(path: Path, content: str): path.parent.mkdir(parents=True, exist_ok=True); path.write_text(content, encoding='utf-8')
-    _create_file(src_dir / "entry.lua", "-- entry --")
+    create_file(src_dir / "entry.lua", "-- entry --")
     
     with pytest.raises(FileNotFoundError, match=r"REQUIRED Namespace file 'ns.lua' not found"):
         composer.build_project(str(src_dir), "out.lua", None, "ns.lua", "entry.lua", None)
 
-    _create_file(src_dir / "ns.lua", "-- namespace --")
+    create_file(src_dir / "ns.lua", "-- namespace --")
     with pytest.raises(FileNotFoundError, match=r"REQUIRED Entrypoint file 'missing_entry.lua' not found"):
         composer.build_project(str(src_dir), "out.lua", None, "ns.lua", "missing_entry.lua", None)
 
 def test_build_project_goto_in_core_module_fails(tmp_path):
     src = tmp_path / "src_goto_fail"
-    def _create_file(path: Path, content: str): path.parent.mkdir(parents=True, exist_ok=True); path.write_text(content, encoding='utf-8')
-    _create_file(src / "ns.lua", "NS={}")
-    _create_file(src / "main.lua", "print('ok')")
-    _create_file(src / "core" / "bad.lua", "local a=1\ngoto oops\n::oops::\nNS.val=a")
+    create_file(src / "ns.lua", "NS={}")
+    create_file(src / "main.lua", "print('ok')")
+    create_file(src / "core" / "bad.lua", "local a=1\ngoto oops\n::oops::\nNS.val=a")
 
     with pytest.raises(Exception, match=r"Disallowed 'goto' statement found in .*?bad.lua on line 2: goto oops"):
         composer.build_project(

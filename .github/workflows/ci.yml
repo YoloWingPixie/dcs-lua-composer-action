@@ -7,12 +7,16 @@ on:
     paths:
       - 'action.yml'
       - 'composer.py'
+      - 'requirements.txt'
+      - 'requirements-dev.txt'
       - 'tests/test_composer.py'
       - '.github/workflows/test-action.yml'
   pull_request:
     paths:
       - 'action.yml'
       - 'composer.py'
+      - 'requirements.txt'
+      - 'requirements-dev.txt'
       - 'tests/test_composer.py'
       - '.github/workflows/test-action.yml'
   workflow_dispatch:
@@ -20,11 +24,15 @@ on:
 jobs:
   run-python-unit-tests:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.12'] 
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0 
 
       - name: Check VERSION file updated on PR
         if: github.event_name == 'pull_request'
@@ -46,19 +54,72 @@ jobs:
           fi
         shell: bash
 
-      - name: Set up Python
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: ${{ matrix.python-version }}
 
-      - name: Install uv and pytest
+      - name: Install uv
         shell: bash
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          uv pip install pytest pytest-mock
+          uv --version # Verify installation
+
+      - name: Create venv and install dependencies with uv
+        shell: bash
+        run: |
+          uv venv .venv --python ${{ matrix.python-version }}
+          source .venv/bin/activate
+          echo "Python from venv: $(python --version)"
+          echo "Installing runtime dependencies..."
+          uv pip install -r requirements.txt
+          echo "Installing development dependencies..."
+          uv pip install -r requirements-dev.txt
+          echo "Verifying pytest installation..."
+          python -m pytest --version
       
       - name: Run Pytest
         shell: bash
         run: |
-          uv pytest tests/test_composer.py 
+          source .venv/bin/activate # Ensure venv is active for this step too
+          echo "Running tests with: $(which python)"
+          python -m pytest tests/test_composer.py 
+
+  lint-and-format-check:
+    name: Lint and Format Check
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.12']
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        shell: bash
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          uv --version
+
+      - name: Install Ruff
+        shell: bash
+        run: |
+          # We only need ruff for this job
+          uv pip install ruff --system
+
+      - name: Run Ruff Linter
+        shell: bash
+        run: |
+          ruff check .
+
+      - name: Run Ruff Formatter Check
+        shell: bash
+        run: |
+          ruff format --check . 

@@ -1,7 +1,7 @@
 import os
 import re
 import argparse
-from collections import defaultdict, deque
+from collections import defaultdict
 from pathlib import Path
 import datetime
 import luaparser.ast as ast
@@ -198,7 +198,8 @@ def sanitize_content(content, file_path, is_lua_module=True, dcs_strict_sanitize
                     if node_for_error.start_char is not None and node_for_error.stop_char is not None:
                         line_start = original_content_for_error_reporting.rfind('\n', 0, node_for_error.start_char) + 1
                         line_end = original_content_for_error_reporting.find('\n', node_for_error.stop_char)
-                        if line_end == -1: line_end = len(original_content_for_error_reporting)
+                        if line_end == -1:
+                            line_end = len(original_content_for_error_reporting)
                         err_line_text = original_content_for_error_reporting[line_start:line_end].strip()
                     raise Exception(f"Disallowed DCS API usage ({offending_id}) found in {file_path} on line {line_num}: {err_line_text}")
 
@@ -275,7 +276,8 @@ def build_project(src_dir, output_file, header_file_rel, namespace_file_rel, ent
     for core_module_path_item in core_module_paths:
         # Ensure it's a module we can get a name for (should always be true here)
         core_module_name_item = path_to_module.get(core_module_path_item)
-        if not core_module_name_item: continue 
+        if not core_module_name_item: 
+            continue 
 
         deps = parse_dependencies(core_module_path_item, src_dir_path)
         dependencies_graph[core_module_name_item] = {

@@ -9,6 +9,7 @@ tasks:
     desc: "Install dependencies and run tests."
     cmds:
       - task: setup
+      - task: lint
       - task: test
     silent: true # Hide task execution lines for default task
 
@@ -40,6 +41,28 @@ tasks:
       - tests/**/*.py
       - tests/functional_test_project/src/**/*.lua
       - tests/functional_test_project/src/**/*.txt
+
+  lint:
+    desc: "Lint Python code with Ruff."
+    deps: [setup] # Depends on setup to ensure ruff is installed
+    cmds:
+      - uv run ruff check . --fix
+    sources:
+      - composer.py
+      - tests/**/*.py
+      - action.yml
+      - Taskfile.yml
+
+  format:
+    desc: "Format Python code with Ruff."
+    deps: [setup]
+    cmds:
+      - uv run ruff format .
+    sources:
+      - composer.py
+      - tests/**/*.py
+      - action.yml
+      - Taskfile.yml
 
   clean:
     desc: "Remove virtual environment and other generated files."
