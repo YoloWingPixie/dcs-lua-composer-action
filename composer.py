@@ -299,11 +299,30 @@ def build_project(
     output_file_path = Path(output_file).resolve()
     output_file_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # --- Resolve paths for all specified files ---
-    header_path = (src_dir_path / header_file_rel).resolve() if header_file_rel else None
-    namespace_path = (src_dir_path / namespace_file_rel).resolve()  # Required
-    entrypoint_path = (src_dir_path / entrypoint_file_rel).resolve()  # Required
-    footer_path = (src_dir_path / footer_file_rel).resolve() if footer_file_rel else None
+    # --- Helper function to validate and resolve paths ---
+    def validate_and_resolve_path(file_rel, file_type):
+        """Validate that the resolved path is within the source directory."""
+        if not file_rel:
+            return None
+
+        # Resolve the path
+        resolved_path = (src_dir_path / file_rel).resolve()
+
+        # Check if the resolved path is within the source directory
+        try:
+            resolved_path.relative_to(src_dir_path)
+        except ValueError:
+            raise ValueError(
+                f"{file_type} file '{file_rel}' resolves to a path outside the source directory: {resolved_path}"
+            )
+
+        return resolved_path
+
+    # --- Resolve paths for all specified files with validation ---
+    header_path = validate_and_resolve_path(header_file_rel, "Header")
+    namespace_path = validate_and_resolve_path(namespace_file_rel, "Namespace")
+    entrypoint_path = validate_and_resolve_path(entrypoint_file_rel, "Entrypoint")
+    footer_path = validate_and_resolve_path(footer_file_rel, "Footer")
 
     # --- Validate existence of required and optional files if specified ---
     if not namespace_path.is_file():

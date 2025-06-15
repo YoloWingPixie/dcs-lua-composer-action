@@ -121,6 +121,62 @@ If you are developing this action or using it within the same repository where t
 **Important:**
 *   When using the marketplace version, always specify a version tag (e.g., `@v1`, `@v1.0.0`) for stability.
 
+## Configuration File Support (.composerrc)
+
+Starting from version 3.x, the action supports reading configuration from a `.composerrc` file in your repository root. This allows you to define default values for all action inputs without having to specify them in every workflow file.
+
+### Using .composerrc
+
+Create a `.composerrc` file in your repository root with your preferred configuration:
+
+```json
+{
+  "source_directory": "src",
+  "output_file": "dist/mission_script.lua",
+  "header_file": "header.lua",
+  "namespace_file": "namespace.lua",
+  "entrypoint_file": "main.lua",
+  "footer_file": "",
+  "dcs_strict_sanitize": true
+}
+```
+
+### Priority Rules
+
+When both `.composerrc` and action inputs are provided:
+- **Action inputs take priority** over `.composerrc` values
+- If an input is not specified in the action, the value from `.composerrc` is used
+- If neither is specified, the action's default values are used
+
+### Example Usage with .composerrc
+
+With a `.composerrc` file in place, your workflow can be simplified:
+
+```yaml
+- name: Compose DCS Lua Script
+  uses: yolowingpixie/dcs-lua-composer-action@v3
+  with:
+    # Only override specific values as needed
+    output_file: 'dist/MySpecialMission.lua'
+    # All other values come from .composerrc
+```
+
+### Configuration Reference
+
+All action inputs can be specified in `.composerrc`:
+
+| Key | Description | Type |
+|-----|-------------|------|
+| `source_directory` | Source directory containing Lua files | string |
+| `output_file` | Path for the final combined Lua file | string |
+| `header_file` | Optional header file (relative to source_directory) | string |
+| `namespace_file` | Required namespace definition file | string |
+| `entrypoint_file` | Required main entry point file | string |
+| `footer_file` | Optional footer file | string |
+| `dcs_strict_sanitize` | Enable strict DCS sanitization | boolean |
+
+See `.composerrc.example` and `.composerrc.example.detailed` in the repository for more examples.
+
 ## Local Development and Testing
 
 This project uses `Taskfile.yml` ([Task](https://taskfile.dev/)) for managing development tasks and `pytest` for testing.
