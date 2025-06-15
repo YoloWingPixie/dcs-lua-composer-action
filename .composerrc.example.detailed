@@ -1,26 +1,26 @@
 {
   // Source directory containing all Lua files (relative to repository root)
   "source_directory": "src",
-  
+
   // Path for the final combined Lua file (relative to repository root)
   "output_file": "dist/mission_script.lua",
-  
+
   // Optional: Header file to include at the top (relative to source_directory)
   // This file is included verbatim without sanitization
   "header_file": "header.lua",
-  
+
   // Required: Namespace definition file (relative to source_directory)
   // This file is sanitized according to DCS rules
   "namespace_file": "namespace.lua",
-  
+
   // Required: Main entry point file (relative to source_directory)
   // This file is loaded after all core modules and is sanitized
   "entrypoint_file": "main.lua",
-  
+
   // Optional: Footer file to include at the bottom (relative to source_directory)
   // This file is included verbatim without sanitization
   "footer_file": "",
-  
+
   // Whether to enforce strict DCS sanitization rules
   // If true, the build will fail on usage of os, io, lfs APIs
   // loadlib is always removed with a warning

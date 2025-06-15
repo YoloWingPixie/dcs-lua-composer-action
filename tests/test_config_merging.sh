@@ -30,7 +30,7 @@ select_value() {
     local input_value="$1"
     local rc_value="$2"
     local default_value="$3"
-    
+
     if [ -n "$input_value" ] && [ "$input_value" != "$default_value" ]; then
         echo "$input_value"
     elif [ -n "$rc_value" ]; then
