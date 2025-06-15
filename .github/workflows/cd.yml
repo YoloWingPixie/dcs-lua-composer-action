@@ -30,7 +30,7 @@ jobs:
       - name: Set up Python # Needed if any python scripts were to be run by cd.yml itself
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10' # Consistent with pyproject.toml
+          python-version: '3.13'
 
       - name: Install uv
         shell: bash

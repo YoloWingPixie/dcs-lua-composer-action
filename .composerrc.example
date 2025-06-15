@@ -1,0 +1,9 @@
+{
+  "source_directory": "src",
+  "output_file": "dist/mission_script.lua",
+  "header_file": "header.lua",
+  "namespace_file": "namespace.lua",
+  "entrypoint_file": "main.lua",
+  "footer_file": "",
+  "dcs_strict_sanitize": true
+}

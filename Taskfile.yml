@@ -2,7 +2,7 @@
 version: '3'
 
 vars:
-  PYTHON_VERSION: '3.12'  # Standardize on 3.12
+  PYTHON_VERSION: '3.13'
   VENV_DIR: .venv
 
 tasks:

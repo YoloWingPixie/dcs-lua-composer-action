@@ -41,15 +41,22 @@ inputs:
 outputs:
   built_file_path:
     description: 'The path to the generated Lua file.'
-    value: ${{ inputs.output_file }}
+    value: ${{ steps.config.outputs.output_file }}
 
 runs:
   using: 'composite'
   steps:
+    - name: Read .composerrc configuration
+      id: composerrc
+      shell: bash
+      run: |
+        cd "${{ github.action_path }}"
+        python read_composerrc.py "${{ github.workspace }}" || true
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.12'
+        python-version: '3.13'
 
     - name: Install uv
       shell: bash
@@ -65,18 +72,72 @@ runs:
         cd "${{ github.action_path }}"
         uv sync --all-extras
 
+    - name: Prepare configuration values
+      id: config
+      shell: bash
+      run: |
+        # Merge action inputs with .composerrc values (action inputs take priority)
+
+        # Helper function to select value (input takes priority over rc)
+        select_value() {
+          local input_value="$1"
+          local rc_value="$2"
+          local default_value="$3"
+
+          if [ -n "$input_value" ] && [ "$input_value" != "$default_value" ]; then
+            echo "$input_value"
+          elif [ -n "$rc_value" ]; then
+            echo "$rc_value"
+          else
+            echo "$default_value"
+          fi
+        }
+
+        # Set configuration values
+        SOURCE_DIR=$(select_value "${{ inputs.source_directory }}" "${{ steps.composerrc.outputs.rc_source_directory }}" "src")
+        OUTPUT_FILE=$(select_value "${{ inputs.output_file }}" "${{ steps.composerrc.outputs.rc_output_file }}" "dist/mission_script.lua")
+        HEADER_FILE=$(select_value "${{ inputs.header_file }}" "${{ steps.composerrc.outputs.rc_header_file }}" "")
+        NAMESPACE_FILE=$(select_value "${{ inputs.namespace_file }}" "${{ steps.composerrc.outputs.rc_namespace_file }}" "")
+        ENTRYPOINT_FILE=$(select_value "${{ inputs.entrypoint_file }}" "${{ steps.composerrc.outputs.rc_entrypoint_file }}" "")
+        FOOTER_FILE=$(select_value "${{ inputs.footer_file }}" "${{ steps.composerrc.outputs.rc_footer_file }}" "")
+        DCS_STRICT=$(select_value "${{ inputs.dcs_strict_sanitize }}" "${{ steps.composerrc.outputs.rc_dcs_strict_sanitize }}" "true")
+
+        # Output the final values
+        echo "source_directory=$SOURCE_DIR" >> $GITHUB_OUTPUT
+        echo "output_file=$OUTPUT_FILE" >> $GITHUB_OUTPUT
+        echo "header_file=$HEADER_FILE" >> $GITHUB_OUTPUT
+        echo "namespace_file=$NAMESPACE_FILE" >> $GITHUB_OUTPUT
+        echo "entrypoint_file=$ENTRYPOINT_FILE" >> $GITHUB_OUTPUT
+        echo "footer_file=$FOOTER_FILE" >> $GITHUB_OUTPUT
+        echo "dcs_strict_sanitize=$DCS_STRICT" >> $GITHUB_OUTPUT
+
     - name: Run DCS Lua Compose Script
       shell: bash
       env:
         PYTHONWARNINGS: 'ignore:.*invalid escape sequence.*:SyntaxWarning:luaparser\.printers'
+        HEADER_FILE: ${{ steps.config.outputs.header_file }}
+        FOOTER_FILE: ${{ steps.config.outputs.footer_file }}
       run: |
         # cd to the action path to ensure uv run finds the synced environment
         cd "${{ github.action_path }}"
-        uv run python composer.py \
-          "${{ github.workspace }}/${{ inputs.source_directory }}" \
-          "${{ github.workspace }}/${{ inputs.output_file }}" \
-          --namespace "${{ inputs.namespace_file }}" \
-          --entrypoint "${{ inputs.entrypoint_file }}" \
-          ${{ inputs.header_file != '' && format('--header "{0}"', inputs.header_file) || '' }} \
-          ${{ inputs.footer_file != '' && format('--footer "{0}"', inputs.footer_file) || '' }} \
-          --dcs-strict-sanitize "${{ inputs.dcs_strict_sanitize }}"
+
+        # Build command array to safely handle filenames with special characters
+        CMD=(uv run python composer.py)
+        CMD+=("${{ github.workspace }}/${{ steps.config.outputs.source_directory }}")
+        CMD+=("${{ github.workspace }}/${{ steps.config.outputs.output_file }}")
+        CMD+=(--namespace "${{ steps.config.outputs.namespace_file }}")
+        CMD+=(--entrypoint "${{ steps.config.outputs.entrypoint_file }}")
+
+        # Add optional parameters only if they are non-empty
+        if [ -n "$HEADER_FILE" ]; then
+          CMD+=(--header "$HEADER_FILE")
+        fi
+
+        if [ -n "$FOOTER_FILE" ]; then
+          CMD+=(--footer "$FOOTER_FILE")
+        fi
+
+        CMD+=(--dcs-strict-sanitize "${{ steps.config.outputs.dcs_strict_sanitize }}")
+
+        # Execute the command
+        "${CMD[@]}"
