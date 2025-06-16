@@ -1,0 +1,16 @@
+{
+  "source_directory": "src",
+  "output_file": "dist/test_mission.lua",
+  "namespace_file": "namespace.lua",
+  "entrypoint_file": "main.lua",
+  "dcs_strict_sanitize": true,
+  "dependencies": [
+    {
+      "name": "test-lib",
+      "type": "local",
+      "source": "external_deps/test_lib.lua",
+      "license": "external_deps/LICENSE",
+      "description": "Small test library for integration testing"
+    }
+  ]
+}

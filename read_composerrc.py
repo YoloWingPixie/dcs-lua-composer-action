@@ -51,6 +51,7 @@ def validate_config(config):
         "entrypoint_file",
         "footer_file",
         "dcs_strict_sanitize",
+        "dependencies",
     }
 
     # Filter out any invalid keys
@@ -74,8 +75,11 @@ def output_for_github_actions(config):
     # Output each config value as an environment variable
     # GitHub Actions will pick these up and use them
     for key, value in config.items():
+        # Special handling for dependencies (output as JSON)
+        if key == "dependencies" and isinstance(value, list):
+            value = json.dumps(value)
         # Convert boolean values to string
-        if isinstance(value, bool):
+        elif isinstance(value, bool):
             value = "true" if value else "false"
 
         # Output in GitHub Actions format
