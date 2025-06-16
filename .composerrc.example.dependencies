@@ -1,0 +1,53 @@
+{
+  // Source directory containing all Lua files (relative to repository root)
+  "source_directory": "src",
+
+  // Path for the final combined Lua file (relative to repository root)
+  "output_file": "dist/mission_script.lua",
+
+  // Required: Namespace definition file (relative to source_directory)
+  "namespace_file": "namespace.lua",
+
+  // Required: Main entry point file (relative to source_directory)
+  "entrypoint_file": "main.lua",
+
+  // Whether to enforce strict DCS sanitization rules
+  "dcs_strict_sanitize": true,
+
+  // External dependencies to inject
+  "dependencies": [
+    {
+      // Dependency from a GitHub release (with 'latest' tag)
+      "name": "mist",
+      "type": "github_release",
+      "source": "mrSkortch/MissionScriptingTools@latest",
+      "file": "mist.lua",
+      "license": "LICENSE",
+      "description": "Mission Scripting Tools for DCS"
+    },
+    {
+      // Dependency from a specific GitHub release version
+      "name": "moose",
+      "type": "github_release",
+      "source": "FlightControl-Master/MOOSE@2.7.0",
+      "file": "Moose.lua",
+      "description": "Mission Object Oriented Scripting Environment"
+    },
+    {
+      // Dependency from a direct URL
+      "name": "custom-utils",
+      "type": "url",
+      "source": "https://example.com/lua-libs/utils.lua",
+      "license": "https://example.com/lua-libs/LICENSE.txt",
+      "description": "Custom utility functions"
+    },
+    {
+      // Local dependency from project repository
+      "name": "local-lib",
+      "type": "local",
+      "source": "external/libs/helper.lua",
+      "license": "external/libs/LICENSE",
+      "description": "Local helper library"
+    }
+  ]
+}

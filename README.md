@@ -19,6 +19,7 @@ DCS World mission scripting often involves loading a single Lua file. As project
 
 *   **Topological Sorting:** Core Lua modules are sorted based on their `require` dependencies.
 *   **Directory-Affinity Packing:** The sort attempts to group files from the same subdirectory if dependencies allow.
+*   **External Dependencies:** Inject external Lua libraries from GitHub releases, URLs, or local files with inline license support.
 *   **Configurable File Roles:** Specify files for Header, Namespace, Entrypoint, and Footer.
 *   **Lua Sanitization & Transformation:**
     *   Removes `require` statements (after dependency analysis).
@@ -174,8 +175,73 @@ All action inputs can be specified in `.composerrc`:
 | `entrypoint_file` | Required main entry point file | string |
 | `footer_file` | Optional footer file | string |
 | `dcs_strict_sanitize` | Enable strict DCS sanitization | boolean |
+| `dependencies` | External dependencies to inject | array |
 
-See `.composerrc.example` and `.composerrc.example.detailed` in the repository for more examples.
+### External Dependencies
+
+Starting from version 4.x, the action supports injecting external Lua dependencies. Dependencies are fetched and included in the final build, with their licenses inline when specified.
+
+#### Dependency Configuration
+
+Dependencies are configured in the `.composerrc` file:
+
+```json
+{
+  "dependencies": [
+    {
+      "name": "mist",
+      "type": "github_release",
+      "source": "mrSkortch/MissionScriptingTools@latest",
+      "file": "mist.lua",
+      "license": "LICENSE",
+      "description": "Mission Scripting Tools for DCS"
+    },
+    {
+      "name": "custom-utils",
+      "type": "url",
+      "source": "https://example.com/utils.lua",
+      "license": "https://example.com/LICENSE.txt"
+    },
+    {
+      "name": "local-lib",
+      "type": "local",
+      "source": "external/libs/helper.lua",
+      "license": "external/libs/LICENSE"
+    }
+  ]
+}
+```
+
+#### Dependency Types
+
+1. **GitHub Release** (`github_release`):
+   - Fetches files from GitHub releases
+   - Supports `@latest` to get the most recent release
+   - Requires `file` field to specify which file to download
+
+2. **URL** (`url`):
+   - Downloads files from any accessible URL
+   - Optional `license` field for license URL
+
+3. **Local** (`local`):
+   - Includes files from your repository
+   - Paths are relative to repository root
+   - Security: Cannot access files outside repository
+
+#### Dependency Fields
+
+| Field | Description | Required |
+|-------|-------------|----------|
+| `name` | Unique identifier for the dependency | Yes |
+| `type` | One of: `github_release`, `url`, `local` | Yes |
+| `source` | Source location (varies by type) | Yes |
+| `file` | Filename to download (GitHub releases only) | Yes (for github_release) |
+| `license` | License file/URL to include inline | No |
+| `description` | Human-readable description | No |
+
+Dependencies are injected after the header but before your namespace and core modules, ensuring they're available to your entire script.
+
+See `.composerrc.example`, `.composerrc.example.detailed`, and `.composerrc.example.dependencies` in the repository for more examples.
 
 ## Local Development and Testing
 

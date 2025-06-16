@@ -102,6 +102,9 @@ runs:
         FOOTER_FILE=$(select_value "${{ inputs.footer_file }}" "${{ steps.composerrc.outputs.rc_footer_file }}" "")
         DCS_STRICT=$(select_value "${{ inputs.dcs_strict_sanitize }}" "${{ steps.composerrc.outputs.rc_dcs_strict_sanitize }}" "true")
 
+        # Dependencies come only from .composerrc (no input parameter)
+        DEPENDENCIES="${{ steps.composerrc.outputs.rc_dependencies }}"
+
         # Output the final values
         echo "source_directory=$SOURCE_DIR" >> $GITHUB_OUTPUT
         echo "output_file=$OUTPUT_FILE" >> $GITHUB_OUTPUT
@@ -110,6 +113,7 @@ runs:
         echo "entrypoint_file=$ENTRYPOINT_FILE" >> $GITHUB_OUTPUT
         echo "footer_file=$FOOTER_FILE" >> $GITHUB_OUTPUT
         echo "dcs_strict_sanitize=$DCS_STRICT" >> $GITHUB_OUTPUT
+        echo "dependencies=$DEPENDENCIES" >> $GITHUB_OUTPUT
 
     - name: Run DCS Lua Compose Script
       shell: bash
@@ -117,6 +121,7 @@ runs:
         PYTHONWARNINGS: 'ignore:.*invalid escape sequence.*:SyntaxWarning:luaparser\.printers'
         HEADER_FILE: ${{ steps.config.outputs.header_file }}
         FOOTER_FILE: ${{ steps.config.outputs.footer_file }}
+        DEPENDENCIES: ${{ steps.config.outputs.dependencies }}
       run: |
         # cd to the action path to ensure uv run finds the synced environment
         cd "${{ github.action_path }}"
@@ -138,6 +143,11 @@ runs:
         fi
 
         CMD+=(--dcs-strict-sanitize "${{ steps.config.outputs.dcs_strict_sanitize }}")
+
+        # Add dependencies if provided
+        if [ -n "$DEPENDENCIES" ]; then
+          CMD+=(--dependencies "$DEPENDENCIES")
+        fi
 
         # Execute the command
         "${CMD[@]}"
