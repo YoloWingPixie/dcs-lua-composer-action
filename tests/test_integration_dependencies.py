@@ -16,8 +16,6 @@ import pytest
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-import dependency_manager
-
 
 def run_composer(working_dir, args):
     """Run the composer script with given arguments."""
@@ -54,10 +52,13 @@ class TestDependencyIntegration:
             [
                 str(test_dir / config["source_directory"]),
                 str(test_dir / config["output_file"]),
-                "--namespace", config["namespace_file"],
-                "--entrypoint", config["entrypoint_file"],
-                "--dependencies", json.dumps(config["dependencies"]),
-            ]
+                "--namespace",
+                config["namespace_file"],
+                "--entrypoint",
+                config["entrypoint_file"],
+                "--dependencies",
+                json.dumps(config["dependencies"]),
+            ],
         )
 
         # Check that the build succeeded
@@ -96,7 +97,7 @@ class TestDependencyIntegration:
 
         # Verify sanitization was applied
         assert "env.info(greeting)" in content
-        assert "env.info(\"Sum from TestLib: \" .. sum)" in content
+        assert 'env.info("Sum from TestLib: " .. sum)' in content
 
         # Clean up
         if output_file.exists():
@@ -135,23 +136,28 @@ class TestDependencyIntegration:
             mock_urlopen.side_effect = urlopen_side_effect
 
             # Run composer with URL dependency
-            dependencies = [{
-                "name": "util-lib",
-                "type": "url",
-                "source": "https://example.com/utils.lua",
-                "license": "https://example.com/LICENSE",
-                "description": "Utility library from URL"
-            }]
+            dependencies = [
+                {
+                    "name": "util-lib",
+                    "type": "url",
+                    "source": "https://example.com/utils.lua",
+                    "license": "https://example.com/LICENSE",
+                    "description": "Utility library from URL",
+                }
+            ]
 
             result = run_composer(
                 test_dir,
                 [
                     str(src_dir),
                     str(test_dir / "output.lua"),
-                    "--namespace", "namespace.lua",
-                    "--entrypoint", "main.lua",
-                    "--dependencies", json.dumps(dependencies),
-                ]
+                    "--namespace",
+                    "namespace.lua",
+                    "--entrypoint",
+                    "main.lua",
+                    "--dependencies",
+                    json.dumps(dependencies),
+                ],
             )
 
             assert result.returncode == 0, f"Build failed: {result.stderr}"
@@ -194,10 +200,13 @@ class TestDependencyIntegration:
                 [
                     str(src_dir),
                     str(test_dir / "output.lua"),
-                    "--namespace", "namespace.lua",
-                    "--entrypoint", "main.lua",
-                    "--dependencies", json.dumps(dependencies),
-                ]
+                    "--namespace",
+                    "namespace.lua",
+                    "--entrypoint",
+                    "main.lua",
+                    "--dependencies",
+                    json.dumps(dependencies),
+                ],
             )
 
             assert result.returncode == 0, f"Build failed: {result.stderr}"
@@ -210,8 +219,9 @@ class TestDependencyIntegration:
             ns_pos = content.find("NS = {}")
 
             # Verify correct order
-            assert lib1_pos < lib2_pos < lib3_pos < ns_pos, \
+            assert lib1_pos < lib2_pos < lib3_pos < ns_pos, (
                 "Dependencies should be in declaration order and before namespace"
+            )
 
     def test_dependency_sanitization(self):
         """Test that dependencies are properly sanitized."""
@@ -242,30 +252,29 @@ class TestDependencyIntegration:
             (src_dir / "namespace.lua").write_text("NS = {}")
             (src_dir / "main.lua").write_text("-- Main")
 
-            dependencies = [{
-                "name": "testdep",
-                "type": "local",
-                "source": "deps/testdep.lua"
-            }]
+            dependencies = [{"name": "testdep", "type": "local", "source": "deps/testdep.lua"}]
 
             result = run_composer(
                 test_dir,
                 [
                     str(src_dir),
                     str(test_dir / "output.lua"),
-                    "--namespace", "namespace.lua",
-                    "--entrypoint", "main.lua",
-                    "--dependencies", json.dumps(dependencies),
-                ]
+                    "--namespace",
+                    "namespace.lua",
+                    "--entrypoint",
+                    "main.lua",
+                    "--dependencies",
+                    json.dumps(dependencies),
+                ],
             )
 
             assert result.returncode == 0, f"Build failed: {result.stderr}"
 
             # Verify sanitization
             content = (test_dir / "output.lua").read_text()
-            assert "env.info(\"Initializing TestDep\")" in content
-            assert "env.info(\"TestDep ready\")" in content
-            assert "env.warning(\"This is a warning\")" in content
-            assert "env.error(\"This is an error\")" in content
+            assert 'env.info("Initializing TestDep")' in content
+            assert 'env.info("TestDep ready")' in content
+            assert 'env.warning("This is a warning")' in content
+            assert 'env.error("This is an error")' in content
             assert "print(" not in content
             assert "log.info(" not in content

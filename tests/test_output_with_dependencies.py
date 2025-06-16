@@ -15,9 +15,9 @@ OUTPUT_DIR = PROJECT_ROOT / "tests" / "output_examples"
 
 def run_composer_test(test_name, working_dir, src_dir, output_file, dependencies, namespace_content, main_content):
     """Run a composer test and generate output."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Running test: {test_name}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     # Create source directory
     src_path = working_dir / src_dir
@@ -33,9 +33,12 @@ def run_composer_test(test_name, working_dir, src_dir, output_file, dependencies
         str(PROJECT_ROOT / "composer.py"),
         str(src_path),
         str(output_file),
-        "--namespace", "namespace.lua",
-        "--entrypoint", "main.lua",
-        "--dependencies", json.dumps(dependencies)
+        "--namespace",
+        "namespace.lua",
+        "--entrypoint",
+        "main.lua",
+        "--dependencies",
+        json.dumps(dependencies),
     ]
 
     result = subprocess.run(cmd, cwd=working_dir, capture_output=True, text=True)
@@ -55,13 +58,15 @@ def test_with_test_lib():
     test_dir = PROJECT_ROOT / "tests" / "fixtures" / "dependency_test"
     output_file = OUTPUT_DIR / "example_with_test_lib.lua"
 
-    dependencies = [{
-        "name": "test-lib",
-        "type": "local",
-        "source": "external_deps/test_lib.lua",
-        "license": "external_deps/LICENSE",
-        "description": "Small test library for integration testing"
-    }]
+    dependencies = [
+        {
+            "name": "test-lib",
+            "type": "local",
+            "source": "external_deps/test_lib.lua",
+            "license": "external_deps/LICENSE",
+            "description": "Small test library for integration testing",
+        }
+    ]
 
     namespace_content = """-- Test Mission Namespace
 TestMission = {
@@ -82,13 +87,7 @@ end
 TestMission.start()"""
 
     return run_composer_test(
-        "Test Library Example",
-        test_dir,
-        "src",
-        output_file,
-        dependencies,
-        namespace_content,
-        main_content
+        "Test Library Example", test_dir, "src", output_file, dependencies, namespace_content, main_content
     )
 
 
@@ -167,13 +166,15 @@ See https://github.com/mrSkortch/MissionScriptingTools for details.""")
 
     output_file = OUTPUT_DIR / "example_with_mist_like.lua"
 
-    dependencies = [{
-        "name": "mist",
-        "type": "local",
-        "source": "mock_deps/mist.lua",
-        "license": "mock_deps/LICENSE",
-        "description": "Mission Scripting Tools - Popular DCS scripting framework (Mock)"
-    }]
+    dependencies = [
+        {
+            "name": "mist",
+            "type": "local",
+            "source": "mock_deps/mist.lua",
+            "license": "mock_deps/LICENSE",
+            "description": "Mission Scripting Tools - Popular DCS scripting framework (Mock)",
+        }
+    ]
 
     namespace_content = """-- Advanced Mission using MIST
 AdvancedMission = {
@@ -206,13 +207,7 @@ end
 AdvancedMission.init()"""
 
     return run_composer_test(
-        "MIST Dependency Example",
-        test_dir,
-        "src",
-        output_file,
-        dependencies,
-        namespace_content,
-        main_content
+        "MIST Dependency Example", test_dir, "src", output_file, dependencies, namespace_content, main_content
     )
 
 
@@ -284,14 +279,9 @@ return Logger""")
             "type": "local",
             "source": "deps/utils.lua",
             "license": "deps/utils_license.txt",
-            "description": "Utility functions"
+            "description": "Utility functions",
         },
-        {
-            "name": "logger",
-            "type": "local",
-            "source": "deps/logger.lua",
-            "description": "Enhanced logging system"
-        }
+        {"name": "logger", "type": "local", "source": "deps/logger.lua", "description": "Enhanced logging system"},
     ]
 
     namespace_content = """-- Complex Mission with Multiple Dependencies
@@ -330,13 +320,7 @@ end
 ComplexMission.run()"""
 
     return run_composer_test(
-        "Multiple Dependencies Example",
-        test_dir,
-        "src",
-        output_file,
-        dependencies,
-        namespace_content,
-        main_content
+        "Multiple Dependencies Example", test_dir, "src", output_file, dependencies, namespace_content, main_content
     )
 
 
@@ -353,9 +337,9 @@ def main():
     results.append(("MIST Integration", test_with_mist()))
 
     # Summary
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("SUMMARY")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     for name, success in results:
         status = "✅ PASSED" if success else "❌ FAILED"

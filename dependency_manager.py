@@ -5,13 +5,11 @@ Dependency manager for fetching and processing external Lua dependencies.
 
 import hashlib
 import json
-import os
 import re
 import tempfile
 import urllib.parse
 import urllib.request
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 
 class Dependency:
@@ -43,11 +41,11 @@ class Dependency:
 class DependencyManager:
     """Manages fetching and processing of external dependencies."""
 
-    def __init__(self, cache_dir: Optional[Path] = None):
+    def __init__(self, cache_dir: Path | None = None):
         self.cache_dir = cache_dir or Path(tempfile.gettempdir()) / "dcs-lua-composer-cache"
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
-    def fetch_dependency(self, dep: Dependency, base_path: Path) -> Tuple[str, Optional[str]]:
+    def fetch_dependency(self, dep: Dependency, base_path: Path) -> tuple[str, str | None]:
         """
         Fetch a dependency and return its content and optional license content.
 
@@ -67,15 +65,14 @@ class DependencyManager:
         else:
             raise ValueError(f"Unknown dependency type: {dep.type}")
 
-    def _fetch_github_release(self, dep: Dependency) -> Tuple[str, Optional[str]]:
+    def _fetch_github_release(self, dep: Dependency) -> tuple[str, str | None]:
         """Fetch a file from a GitHub release."""
         # Parse the source to extract owner, repo, and tag
         # Expected format: owner/repo@tag or owner/repo@latest
         match = re.match(r"^([^/]+)/([^@]+)@(.+)$", dep.source)
         if not match:
             raise ValueError(
-                f"Invalid GitHub release source format for '{dep.name}': {dep.source}. "
-                "Expected format: owner/repo@tag"
+                f"Invalid GitHub release source format for '{dep.name}': {dep.source}. Expected format: owner/repo@tag"
             )
 
         owner, repo, tag = match.groups()
@@ -102,15 +99,13 @@ class DependencyManager:
         if dep.license:
             license_url = f"https://github.com/{owner}/{repo}/releases/download/{tag}/{dep.license}"
             try:
-                license_content = self._download_with_cache(
-                    license_url, f"{dep.name}_{tag}_{dep.license}"
-                )
+                license_content = self._download_with_cache(license_url, f"{dep.name}_{tag}_{dep.license}")
             except Exception as e:
                 print(f"Warning: Failed to fetch license for '{dep.name}': {e}")
 
         return lua_content, license_content
 
-    def _fetch_url(self, dep: Dependency) -> Tuple[str, Optional[str]]:
+    def _fetch_url(self, dep: Dependency) -> tuple[str, str | None]:
         """Fetch a file from a URL."""
         # Fetch the Lua file
         lua_content = self._download_with_cache(dep.source, f"{dep.name}_main")
@@ -125,7 +120,7 @@ class DependencyManager:
 
         return lua_content, license_content
 
-    def _fetch_local(self, dep: Dependency, base_path: Path) -> Tuple[str, Optional[str]]:
+    def _fetch_local(self, dep: Dependency, base_path: Path) -> tuple[str, str | None]:
         """Fetch a file from the local filesystem."""
         # Resolve the path relative to the base path
         file_path = (base_path / dep.source).resolve()
@@ -135,15 +130,13 @@ class DependencyManager:
         try:
             file_path.relative_to(base_path.resolve())
         except ValueError:
-            raise ValueError(
-                f"Local dependency '{dep.name}' resolves to a path outside the project: {file_path}"
-            )
+            raise ValueError(f"Local dependency '{dep.name}' resolves to a path outside the project: {file_path}")
 
         if not file_path.exists():
             raise FileNotFoundError(f"Local dependency '{dep.name}' not found at: {file_path}")
 
         # Read the Lua file
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             lua_content = f.read()
 
         # Read license if specified
@@ -153,7 +146,7 @@ class DependencyManager:
             try:
                 license_path.relative_to(base_path.resolve())
                 if license_path.exists():
-                    with open(license_path, "r", encoding="utf-8") as f:
+                    with open(license_path, encoding="utf-8") as f:
                         license_content = f.read()
                 else:
                     print(f"Warning: License file not found for '{dep.name}': {license_path}")
@@ -171,7 +164,7 @@ class DependencyManager:
         # Check if cached version exists
         if cache_file.exists():
             print(f"Using cached version of {url}")
-            with open(cache_file, "r", encoding="utf-8") as f:
+            with open(cache_file, encoding="utf-8") as f:
                 return f.read()
 
         # Download the file
@@ -188,9 +181,7 @@ class DependencyManager:
         except Exception as e:
             raise RuntimeError(f"Failed to download {url}: {e}")
 
-    def format_dependency_block(
-        self, dep: Dependency, lua_content: str, license_content: Optional[str]
-    ) -> str:
+    def format_dependency_block(self, dep: Dependency, lua_content: str, license_content: str | None) -> str:
         """Format a dependency with its license for injection into the composed file."""
         lines = []
 
@@ -216,7 +207,7 @@ class DependencyManager:
         return "\n".join(lines)
 
 
-def load_dependencies_config(config_data: dict) -> List[Dependency]:
+def load_dependencies_config(config_data: dict) -> list[Dependency]:
     """Load dependencies from configuration."""
     dependencies = []
 

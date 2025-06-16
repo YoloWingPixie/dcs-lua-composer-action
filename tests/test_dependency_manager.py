@@ -107,7 +107,7 @@ class TestDependencyManager:
         """Test that cache directory is created."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             cache_dir = Path(tmp_dir) / "test-cache"
-            manager = DependencyManager(cache_dir)
+            DependencyManager(cache_dir)
             assert cache_dir.exists()
             assert cache_dir.is_dir()
 
