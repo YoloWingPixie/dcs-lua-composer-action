@@ -548,3 +548,375 @@ def test_build_project_complex_functional(tmp_path, mocker):
     assert len(sorted_core_modules_str.split(", ")) == len(all_core_module_names), (
         f"Incorrect number of modules in Core Modules Order. Expected {len(all_core_module_names)}, Got {len(sorted_core_modules_str.split(', '))}. String: {sorted_core_modules_str}"
     )
+
+
+# --- Tests for scoping functionality ---
+def test_build_project_scope_global_default(tmp_path, mocker):
+    """Test that global scope is the default behavior and doesn't wrap content in do...end blocks."""
+    src = tmp_path / "src_scope_global"
+    create_file(src / "ns.lua", "ProjectNS = {}")
+    create_file(src / "main.lua", "ProjectNS.started = true")
+    create_file(src / "core.lua", "ProjectNS.core_loaded = true")
+
+    output_file = tmp_path / "dist" / "global_scope.lua"
+
+    # Mock datetime for consistent output
+    mocked_now = datetime.datetime(2023, 10, 27, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    mocker.patch("composer.datetime.datetime")
+    composer.datetime.datetime.now.return_value = mocked_now
+
+    # Test default behavior (no scope parameter)
+    composer.build_project(
+        src_dir=str(src),
+        output_file=str(output_file),
+        header_file_rel=None,
+        namespace_file_rel="ns.lua",
+        entrypoint_file_rel="main.lua",
+        footer_file_rel=None,
+    )
+
+    content = output_file.read_text(encoding="utf-8")
+
+    # Verify global scope indicators
+    assert "-- Scope: global" in content
+    assert "-- Beginning of local scope" not in content
+    assert "-- End of local scope" not in content
+    assert content.count("do\n") == 0  # No do blocks for scoping
+    assert content.count("end\n") == 0  # No end blocks for scoping
+
+    # Verify content is present and in correct order
+    assert "ProjectNS = {}" in content
+    assert "ProjectNS.core_loaded = true" in content
+    assert "ProjectNS.started = true" in content
+
+
+def test_build_project_scope_global_explicit(tmp_path, mocker):
+    """Test that explicitly setting scope to 'global' works correctly."""
+    src = tmp_path / "src_scope_global_explicit"
+    create_file(src / "ns.lua", "ProjectNS = {}")
+    create_file(src / "main.lua", "ProjectNS.started = true")
+    create_file(src / "core.lua", "ProjectNS.core_loaded = true")
+
+    output_file = tmp_path / "dist" / "global_scope_explicit.lua"
+
+    # Mock datetime for consistent output
+    mocked_now = datetime.datetime(2023, 10, 27, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    mocker.patch("composer.datetime.datetime")
+    composer.datetime.datetime.now.return_value = mocked_now
+
+    # Test explicit global scope
+    composer.build_project(
+        src_dir=str(src),
+        output_file=str(output_file),
+        header_file_rel=None,
+        namespace_file_rel="ns.lua",
+        entrypoint_file_rel="main.lua",
+        footer_file_rel=None,
+        scope="global",
+    )
+
+    content = output_file.read_text(encoding="utf-8")
+
+    # Verify global scope indicators
+    assert "-- Scope: global" in content
+    assert "-- Beginning of local scope" not in content
+    assert "-- End of local scope" not in content
+    assert content.count("do\n") == 0  # No do blocks for scoping
+    assert content.count("end\n") == 0  # No end blocks for scoping
+
+
+def test_build_project_scope_local(tmp_path, mocker):
+    """Test that local scope wraps main content in do...end blocks."""
+    src = tmp_path / "src_scope_local"
+    create_file(src / "ns.lua", "ProjectNS = {}")
+    create_file(src / "main.lua", "ProjectNS.started = true")
+    create_file(src / "core.lua", "ProjectNS.core_loaded = true")
+
+    output_file = tmp_path / "dist" / "local_scope.lua"
+
+    # Mock datetime for consistent output
+    mocked_now = datetime.datetime(2023, 10, 27, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    mocker.patch("composer.datetime.datetime")
+    composer.datetime.datetime.now.return_value = mocked_now
+
+    # Test local scope
+    composer.build_project(
+        src_dir=str(src),
+        output_file=str(output_file),
+        header_file_rel=None,
+        namespace_file_rel="ns.lua",
+        entrypoint_file_rel="main.lua",
+        footer_file_rel=None,
+        scope="local",
+    )
+
+    content = output_file.read_text(encoding="utf-8")
+
+    # Verify local scope indicators
+    assert "-- Scope: local" in content
+    assert "-- Beginning of local scope" in content
+    assert "-- End of local scope" in content
+    assert content.count("do\n") == 1  # One do block for scoping
+    assert content.count("end\n") == 1  # One end block for scoping
+
+    # Verify content is wrapped properly
+    lines = content.split("\n")
+    do_line_idx = next(i for i, line in enumerate(lines) if line.strip() == "do")
+    end_line_idx = next(i for i, line in enumerate(lines) if line.strip() == "end")
+
+    # Main content should be between do and end
+    wrapped_content = "\n".join(lines[do_line_idx + 1 : end_line_idx])
+    assert "ProjectNS = {}" in wrapped_content
+    assert "ProjectNS.core_loaded = true" in wrapped_content
+    assert "ProjectNS.started = true" in wrapped_content
+
+
+def test_build_project_scope_local_with_header_footer(tmp_path, mocker):
+    """Test that local scope keeps header and footer outside the do...end block."""
+    src = tmp_path / "src_scope_local_header_footer"
+    create_file(src / "header.txt", "-- Global header content\nglobal_var = 'header'")
+    create_file(src / "ns.lua", "ProjectNS = {}")
+    create_file(src / "main.lua", "ProjectNS.started = true")
+    create_file(src / "core.lua", "ProjectNS.core_loaded = true")
+    create_file(src / "footer.txt", "-- Global footer content\nfinal_cleanup()")
+
+    output_file = tmp_path / "dist" / "local_scope_header_footer.lua"
+
+    # Mock datetime for consistent output
+    mocked_now = datetime.datetime(2023, 10, 27, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    mocker.patch("composer.datetime.datetime")
+    composer.datetime.datetime.now.return_value = mocked_now
+
+    # Test local scope with header and footer
+    composer.build_project(
+        src_dir=str(src),
+        output_file=str(output_file),
+        header_file_rel="header.txt",
+        namespace_file_rel="ns.lua",
+        entrypoint_file_rel="main.lua",
+        footer_file_rel="footer.txt",
+        scope="local",
+    )
+
+    content = output_file.read_text(encoding="utf-8")
+
+    # Find the positions of key markers
+    lines = content.split("\n")
+    header_idx = next(i for i, line in enumerate(lines) if "global_var = 'header'" in line)
+    do_idx = next(i for i, line in enumerate(lines) if line.strip() == "do")
+    end_idx = next(i for i, line in enumerate(lines) if line.strip() == "end")
+    footer_idx = next(i for i, line in enumerate(lines) if "final_cleanup()" in line)
+
+    # Verify order: header < do < end < footer
+    assert header_idx < do_idx, "Header should come before do block"
+    assert do_idx < end_idx, "do should come before end"
+    assert end_idx < footer_idx, "end should come before footer"
+
+    # Verify header and footer are outside the do...end block
+    before_do = "\n".join(lines[:do_idx])
+    after_end = "\n".join(lines[end_idx + 1 :])
+
+    assert "global_var = 'header'" in before_do
+    assert "final_cleanup()" in after_end
+
+    # Verify main content is inside the do...end block
+    wrapped_content = "\n".join(lines[do_idx + 1 : end_idx])
+    assert "ProjectNS = {}" in wrapped_content
+    assert "ProjectNS.core_loaded = true" in wrapped_content
+    assert "ProjectNS.started = true" in wrapped_content
+
+
+def test_build_project_scope_local_with_dependencies(tmp_path, mocker):
+    """Test that local scope includes dependencies inside the do...end block."""
+    src = tmp_path / "src_scope_local_deps"
+    create_file(src / "ns.lua", "ProjectNS = {}")
+    create_file(src / "main.lua", "ProjectNS.started = true")
+    create_file(src / "core.lua", "ProjectNS.core_loaded = true")
+
+    output_file = tmp_path / "dist" / "local_scope_deps.lua"
+
+    # Mock datetime for consistent output
+    mocked_now = datetime.datetime(2023, 10, 27, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    mocker.patch("composer.datetime.datetime")
+    composer.datetime.datetime.now.return_value = mocked_now
+
+    # Create a simple dependency config
+    dependencies_config = [{"name": "test_dep", "type": "local", "source": "test_dep.lua"}]
+
+    # Create the dependency file in the source directory so it can be found
+    create_file(src / "test_dep.lua", "-- Test dependency\ntest_dep_loaded = true")
+
+    # Test local scope with dependencies (use src as base path instead of cwd)
+    # Temporarily change to src directory for the test
+    import os
+
+    original_cwd = os.getcwd()
+    try:
+        os.chdir(str(src))
+        composer.build_project(
+            src_dir=str(src),
+            output_file=str(output_file),
+            header_file_rel=None,
+            namespace_file_rel="ns.lua",
+            entrypoint_file_rel="main.lua",
+            footer_file_rel=None,
+            scope="local",
+            dependencies_config=dependencies_config,
+        )
+    finally:
+        os.chdir(original_cwd)
+
+    content = output_file.read_text(encoding="utf-8")
+
+    # Verify local scope structure
+    assert "-- Scope: local" in content
+    assert "-- Beginning of local scope" in content
+    assert "-- End of local scope" in content
+
+    # Find the do...end block boundaries
+    lines = content.split("\n")
+    do_idx = next(i for i, line in enumerate(lines) if line.strip() == "do")
+    end_idx = next(i for i, line in enumerate(lines) if line.strip() == "end")
+
+    # Verify dependencies are inside the do...end block
+    wrapped_content = "\n".join(lines[do_idx + 1 : end_idx])
+    assert "test_dep_loaded = true" in wrapped_content
+    assert "ProjectNS = {}" in wrapped_content
+    assert "ProjectNS.core_loaded = true" in wrapped_content
+    assert "ProjectNS.started = true" in wrapped_content
+
+
+def test_build_project_scope_local_multiple_core_modules(tmp_path, mocker):
+    """Test that local scope works correctly with multiple core modules in dependency order."""
+    src = tmp_path / "src_scope_local_multi"
+    create_file(src / "ns.lua", "ProjectNS = {}")
+    create_file(src / "main.lua", "ProjectNS.started = true")
+    create_file(src / "a.lua", "ProjectNS.a = true")
+    create_file(src / "b.lua", 'require "a"\nProjectNS.b = true')  # b depends on a
+    create_file(src / "c.lua", 'require "b"\nProjectNS.c = true')  # c depends on b
+
+    output_file = tmp_path / "dist" / "local_scope_multi.lua"
+
+    # Mock datetime for consistent output
+    mocked_now = datetime.datetime(2023, 10, 27, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    mocker.patch("composer.datetime.datetime")
+    composer.datetime.datetime.now.return_value = mocked_now
+
+    # Test local scope with multiple modules
+    composer.build_project(
+        src_dir=str(src),
+        output_file=str(output_file),
+        header_file_rel=None,
+        namespace_file_rel="ns.lua",
+        entrypoint_file_rel="main.lua",
+        footer_file_rel=None,
+        scope="local",
+    )
+
+    content = output_file.read_text(encoding="utf-8")
+
+    # Verify local scope structure
+    assert "-- Scope: local" in content
+    assert "-- Beginning of local scope" in content
+    assert "-- End of local scope" in content
+
+    # Find the do...end block boundaries
+    lines = content.split("\n")
+    do_idx = next(i for i, line in enumerate(lines) if line.strip() == "do")
+    end_idx = next(i for i, line in enumerate(lines) if line.strip() == "end")
+
+    # Verify all content is inside the do...end block and in correct order
+    wrapped_content = "\n".join(lines[do_idx + 1 : end_idx])
+
+    # Check that all modules are present
+    assert "ProjectNS = {}" in wrapped_content
+    assert "ProjectNS.a = true" in wrapped_content
+    assert "ProjectNS.b = true" in wrapped_content
+    assert "ProjectNS.c = true" in wrapped_content
+    assert "ProjectNS.started = true" in wrapped_content
+
+    # Check dependency order is preserved (a before b before c)
+    idx_a = wrapped_content.find("ProjectNS.a = true")
+    idx_b = wrapped_content.find("ProjectNS.b = true")
+    idx_c = wrapped_content.find("ProjectNS.c = true")
+
+    assert idx_a < idx_b, "Module 'a' should come before module 'b'"
+    assert idx_b < idx_c, "Module 'b' should come before module 'c'"
+
+    # Verify require statements are sanitized away
+    assert 'require "a"' not in wrapped_content
+    assert 'require "b"' not in wrapped_content
+
+
+def test_build_project_scope_demonstration(tmp_path, mocker):
+    """Demonstration test showing the difference between global and local scoping."""
+    src = tmp_path / "src_demo"
+    create_file(src / "ns.lua", "MyProject = {}")
+    create_file(src / "main.lua", "MyProject.main = function() env.info('Hello World') end")
+
+    # Mock datetime for consistent output
+    mocked_now = datetime.datetime(2023, 10, 27, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    mocker.patch("composer.datetime.datetime")
+    composer.datetime.datetime.now.return_value = mocked_now
+
+    # Build with global scope
+    global_output = tmp_path / "global_demo.lua"
+    composer.build_project(
+        src_dir=str(src),
+        output_file=str(global_output),
+        header_file_rel=None,
+        namespace_file_rel="ns.lua",
+        entrypoint_file_rel="main.lua",
+        footer_file_rel=None,
+        scope="global",
+    )
+
+    # Build with local scope
+    local_output = tmp_path / "local_demo.lua"
+    composer.build_project(
+        src_dir=str(src),
+        output_file=str(local_output),
+        header_file_rel=None,
+        namespace_file_rel="ns.lua",
+        entrypoint_file_rel="main.lua",
+        footer_file_rel=None,
+        scope="local",
+    )
+
+    global_content = global_output.read_text(encoding="utf-8")
+    local_content = local_output.read_text(encoding="utf-8")
+
+    # Global should not have do...end wrapping
+    assert "-- Scope: global" in global_content
+    assert "-- Beginning of local scope" not in global_content
+    assert "-- End of local scope" not in global_content
+
+    # Local should have do...end wrapping
+    assert "-- Scope: local" in local_content
+    assert "-- Beginning of local scope" in local_content
+    assert "-- End of local scope" in local_content
+
+    # Check for the specific scoping do...end pattern (not just any "do" or "end")
+    lines = local_content.split("\n")
+    scoping_do_found = any(line.strip() == "do" for line in lines)
+    scoping_end_found = any(line.strip() == "end" for line in lines)
+    assert scoping_do_found, "Local scope should have a standalone 'do' line"
+    assert scoping_end_found, "Local scope should have a standalone 'end' line"
+
+    # Global scope should not have standalone do/end for scoping
+    global_lines = global_content.split("\n")
+    global_scoping_do = any(line.strip() == "do" for line in global_lines)
+    global_scoping_end = any(line.strip() == "end" for line in global_lines)
+    assert not global_scoping_do, "Global scope should not have standalone 'do' for scoping"
+    assert not global_scoping_end, "Global scope should not have standalone 'end' for scoping"
+
+    # Both should contain the same core content
+    assert "MyProject = {}" in global_content
+    assert "MyProject = {}" in local_content
+    assert "MyProject.main = function() env.info('Hello World') end" in global_content
+    assert "MyProject.main = function() env.info('Hello World') end" in local_content
+
+    print("\n=== GLOBAL SCOPE OUTPUT ===")
+    print(global_content)
+    print("\n=== LOCAL SCOPE OUTPUT ===")
+    print(local_content)

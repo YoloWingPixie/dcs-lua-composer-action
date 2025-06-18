@@ -37,6 +37,12 @@ inputs:
       Print/log are always transformed.
     required: false
     default: 'true'
+  scope:
+    description: >-
+      Scope for the generated script. 'global' (default) generates normal global scope,
+      'local' wraps content in do...end blocks for local scoping.
+    required: false
+    default: 'global'
 
 outputs:
   built_file_path:
@@ -101,6 +107,7 @@ runs:
         ENTRYPOINT_FILE=$(select_value "${{ inputs.entrypoint_file }}" "${{ steps.composerrc.outputs.rc_entrypoint_file }}" "")
         FOOTER_FILE=$(select_value "${{ inputs.footer_file }}" "${{ steps.composerrc.outputs.rc_footer_file }}" "")
         DCS_STRICT=$(select_value "${{ inputs.dcs_strict_sanitize }}" "${{ steps.composerrc.outputs.rc_dcs_strict_sanitize }}" "true")
+        SCOPE=$(select_value "${{ inputs.scope }}" "${{ steps.composerrc.outputs.rc_scope }}" "global")
 
         # Dependencies come only from .composerrc (no input parameter)
         DEPENDENCIES="${{ steps.composerrc.outputs.rc_dependencies }}"
@@ -113,6 +120,7 @@ runs:
         echo "entrypoint_file=$ENTRYPOINT_FILE" >> $GITHUB_OUTPUT
         echo "footer_file=$FOOTER_FILE" >> $GITHUB_OUTPUT
         echo "dcs_strict_sanitize=$DCS_STRICT" >> $GITHUB_OUTPUT
+        echo "scope=$SCOPE" >> $GITHUB_OUTPUT
         echo "dependencies=$DEPENDENCIES" >> $GITHUB_OUTPUT
 
     - name: Run DCS Lua Compose Script
@@ -143,6 +151,7 @@ runs:
         fi
 
         CMD+=(--dcs-strict-sanitize "${{ steps.config.outputs.dcs_strict_sanitize }}")
+        CMD+=(--scope "${{ steps.config.outputs.scope }}")
 
         # Add dependencies if provided
         if [ -n "$DEPENDENCIES" ]; then

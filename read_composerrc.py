@@ -51,6 +51,7 @@ def validate_config(config):
         "entrypoint_file",
         "footer_file",
         "dcs_strict_sanitize",
+        "scope",
         "dependencies",
     }
 
