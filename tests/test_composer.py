@@ -549,6 +549,7 @@ def test_build_project_complex_functional(tmp_path, mocker):
         f"Incorrect number of modules in Core Modules Order. Expected {len(all_core_module_names)}, Got {len(sorted_core_modules_str.split(', '))}. String: {sorted_core_modules_str}"
     )
 
+
 # --- Tests for scoping functionality ---
 def test_build_project_scope_global_default(tmp_path, mocker):
     """Test that global scope is the default behavior and doesn't wrap content in do...end blocks."""
@@ -659,12 +660,12 @@ def test_build_project_scope_local(tmp_path, mocker):
     assert content.count("end\n") == 1  # One end block for scoping
 
     # Verify content is wrapped properly
-    lines = content.split('\n')
+    lines = content.split("\n")
     do_line_idx = next(i for i, line in enumerate(lines) if line.strip() == "do")
     end_line_idx = next(i for i, line in enumerate(lines) if line.strip() == "end")
 
     # Main content should be between do and end
-    wrapped_content = '\n'.join(lines[do_line_idx+1:end_line_idx])
+    wrapped_content = "\n".join(lines[do_line_idx + 1 : end_line_idx])
     assert "ProjectNS = {}" in wrapped_content
     assert "ProjectNS.core_loaded = true" in wrapped_content
     assert "ProjectNS.started = true" in wrapped_content
@@ -700,7 +701,7 @@ def test_build_project_scope_local_with_header_footer(tmp_path, mocker):
     content = output_file.read_text(encoding="utf-8")
 
     # Find the positions of key markers
-    lines = content.split('\n')
+    lines = content.split("\n")
     header_idx = next(i for i, line in enumerate(lines) if "global_var = 'header'" in line)
     do_idx = next(i for i, line in enumerate(lines) if line.strip() == "do")
     end_idx = next(i for i, line in enumerate(lines) if line.strip() == "end")
@@ -712,14 +713,14 @@ def test_build_project_scope_local_with_header_footer(tmp_path, mocker):
     assert end_idx < footer_idx, "end should come before footer"
 
     # Verify header and footer are outside the do...end block
-    before_do = '\n'.join(lines[:do_idx])
-    after_end = '\n'.join(lines[end_idx+1:])
+    before_do = "\n".join(lines[:do_idx])
+    after_end = "\n".join(lines[end_idx + 1 :])
 
     assert "global_var = 'header'" in before_do
     assert "final_cleanup()" in after_end
 
     # Verify main content is inside the do...end block
-    wrapped_content = '\n'.join(lines[do_idx+1:end_idx])
+    wrapped_content = "\n".join(lines[do_idx + 1 : end_idx])
     assert "ProjectNS = {}" in wrapped_content
     assert "ProjectNS.core_loaded = true" in wrapped_content
     assert "ProjectNS.started = true" in wrapped_content
@@ -740,13 +741,7 @@ def test_build_project_scope_local_with_dependencies(tmp_path, mocker):
     composer.datetime.datetime.now.return_value = mocked_now
 
     # Create a simple dependency config
-    dependencies_config = [
-        {
-            "name": "test_dep",
-            "type": "local",
-            "source": "test_dep.lua"
-        }
-    ]
+    dependencies_config = [{"name": "test_dep", "type": "local", "source": "test_dep.lua"}]
 
     # Create the dependency file in the source directory so it can be found
     create_file(src / "test_dep.lua", "-- Test dependency\ntest_dep_loaded = true")
@@ -754,6 +749,7 @@ def test_build_project_scope_local_with_dependencies(tmp_path, mocker):
     # Test local scope with dependencies (use src as base path instead of cwd)
     # Temporarily change to src directory for the test
     import os
+
     original_cwd = os.getcwd()
     try:
         os.chdir(str(src))
@@ -778,12 +774,12 @@ def test_build_project_scope_local_with_dependencies(tmp_path, mocker):
     assert "-- End of local scope" in content
 
     # Find the do...end block boundaries
-    lines = content.split('\n')
+    lines = content.split("\n")
     do_idx = next(i for i, line in enumerate(lines) if line.strip() == "do")
     end_idx = next(i for i, line in enumerate(lines) if line.strip() == "end")
 
     # Verify dependencies are inside the do...end block
-    wrapped_content = '\n'.join(lines[do_idx+1:end_idx])
+    wrapped_content = "\n".join(lines[do_idx + 1 : end_idx])
     assert "test_dep_loaded = true" in wrapped_content
     assert "ProjectNS = {}" in wrapped_content
     assert "ProjectNS.core_loaded = true" in wrapped_content
@@ -825,12 +821,12 @@ def test_build_project_scope_local_multiple_core_modules(tmp_path, mocker):
     assert "-- End of local scope" in content
 
     # Find the do...end block boundaries
-    lines = content.split('\n')
+    lines = content.split("\n")
     do_idx = next(i for i, line in enumerate(lines) if line.strip() == "do")
     end_idx = next(i for i, line in enumerate(lines) if line.strip() == "end")
 
     # Verify all content is inside the do...end block and in correct order
-    wrapped_content = '\n'.join(lines[do_idx+1:end_idx])
+    wrapped_content = "\n".join(lines[do_idx + 1 : end_idx])
 
     # Check that all modules are present
     assert "ProjectNS = {}" in wrapped_content
@@ -901,14 +897,14 @@ def test_build_project_scope_demonstration(tmp_path, mocker):
     assert "-- End of local scope" in local_content
 
     # Check for the specific scoping do...end pattern (not just any "do" or "end")
-    lines = local_content.split('\n')
+    lines = local_content.split("\n")
     scoping_do_found = any(line.strip() == "do" for line in lines)
     scoping_end_found = any(line.strip() == "end" for line in lines)
     assert scoping_do_found, "Local scope should have a standalone 'do' line"
     assert scoping_end_found, "Local scope should have a standalone 'end' line"
 
     # Global scope should not have standalone do/end for scoping
-    global_lines = global_content.split('\n')
+    global_lines = global_content.split("\n")
     global_scoping_do = any(line.strip() == "do" for line in global_lines)
     global_scoping_end = any(line.strip() == "end" for line in global_lines)
     assert not global_scoping_do, "Global scope should not have standalone 'do' for scoping"

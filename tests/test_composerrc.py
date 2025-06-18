@@ -92,20 +92,12 @@ class TestComposerRC(unittest.TestCase):
     def test_validate_config_scope_values(self):
         """Test validation with different scope values."""
         # Test with global scope
-        config_global = {
-            "source_directory": "src",
-            "namespace_file": "namespace.lua",
-            "scope": "global"
-        }
+        config_global = {"source_directory": "src", "namespace_file": "namespace.lua", "scope": "global"}
         validated_global = read_composerrc.validate_config(config_global)
         self.assertEqual(validated_global["scope"], "global")
 
         # Test with local scope
-        config_local = {
-            "source_directory": "src",
-            "namespace_file": "namespace.lua",
-            "scope": "local"
-        }
+        config_local = {"source_directory": "src", "namespace_file": "namespace.lua", "scope": "local"}
         validated_local = read_composerrc.validate_config(config_local)
         self.assertEqual(validated_local["scope"], "local")
 
