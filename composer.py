@@ -47,12 +47,91 @@ REQUIRE_REMOVAL_PATTERN = re.compile(
     re.VERBOSE,
 )
 
-# Patterns for print/log transformation
-PRINT_TRANSFORM_PATTERN = re.compile(r"\bprint\s*(\([^\)]*\))")  # captures arguments in group 1
-LOG_INFO_TRANSFORM_PATTERN = re.compile(r"\blog\.info\s*(\([^\)]*\))")
-LOG_WARNING_TRANSFORM_PATTERN = re.compile(r"\blog\.warning\s*(\([^\)]*\))")
-LOG_ERROR_TRANSFORM_PATTERN = re.compile(r"\blog\.error\s*(\([^\)]*\))")
-LOG_OTHER_REMOVAL_PATTERN = re.compile(r"\blog\.[a-zA-Z_][a-zA-Z0-9_]*\s*\([^\)]*\)(?:\s*;)?")
+def _find_balanced_parentheses(text, start_pos):
+    """Find the matching closing parenthesis for an opening parenthesis at start_pos."""
+    if start_pos >= len(text) or text[start_pos] != '(':
+        return -1
+
+    paren_count = 1
+    pos = start_pos + 1
+    in_string = False
+    escape_next = False
+    string_char = None
+
+    while pos < len(text) and paren_count > 0:
+        char = text[pos]
+
+        if escape_next:
+            escape_next = False
+        elif char == '\\':
+            escape_next = True
+        elif not in_string:
+            if char in ['"', "'"]:
+                in_string = True
+                string_char = char
+            elif char == '(':
+                paren_count += 1
+            elif char == ')':
+                paren_count -= 1
+        elif in_string and char == string_char:
+            in_string = False
+            string_char = None
+
+        pos += 1
+
+    return pos - 1 if paren_count == 0 else -1
+
+def _safe_regex_replace(pattern, replacement, text, is_removal=False):
+    """Safely replace function calls while handling nested parentheses properly."""
+    result = []
+    last_end = 0
+
+    for match in pattern.finditer(text):
+        # Add text before this match
+        result.append(text[last_end:match.start()])
+
+        # Find the opening parenthesis in the original text starting from match position
+        paren_start_in_text = text.find('(', match.start())
+        if paren_start_in_text == -1 or paren_start_in_text >= match.end() + 10:  # Safety margin
+            # No parentheses found nearby, handle as simple replacement
+            if is_removal:
+                pass  # Skip adding anything for removal
+            else:
+                result.append(match.expand(replacement))
+            last_end = match.end()
+        else:
+            # Find the balanced closing parenthesis
+            paren_end = _find_balanced_parentheses(text, paren_start_in_text)
+
+            if paren_end == -1:
+                # Unbalanced parentheses, keep original
+                result.append(text[match.start():match.end()])
+                last_end = match.end()
+            else:
+                # Extract the full function call with balanced parentheses
+                if is_removal:
+                    # For removal, skip adding anything and also skip any trailing semicolon
+                    next_pos = paren_end + 1
+                    if next_pos < len(text) and text[next_pos:next_pos+1] == ';':
+                        next_pos += 1
+                    last_end = next_pos
+                else:
+                    # For transformation, apply the replacement
+                    prefix = text[match.start():paren_start_in_text]
+                    args = text[paren_start_in_text:paren_end + 1]
+                    result.append(replacement + args)
+                    last_end = paren_end + 1
+
+    # Add remaining text
+    result.append(text[last_end:])
+    return ''.join(result)
+
+# Improved patterns that will work with the safe replacement function
+PRINT_TRANSFORM_PATTERN = re.compile(r"\bprint\s*(?=\()")
+LOG_INFO_TRANSFORM_PATTERN = re.compile(r"\blog\.info\s*(?=\()")
+LOG_WARNING_TRANSFORM_PATTERN = re.compile(r"\blog\.warning\s*(?=\()")
+LOG_ERROR_TRANSFORM_PATTERN = re.compile(r"\blog\.error\s*(?=\()")
+LOG_OTHER_REMOVAL_PATTERN = re.compile(r"\blog\.[a-zA-Z_][a-zA-Z0-9_]*\s*(?=\()")
 
 # Pattern to find the loadlib call for warning messages
 LOADLIB_CALL_PATTERN = re.compile(r"\bloadlib\s*\(.*?\)(?:\s*;)?")
@@ -271,14 +350,14 @@ def sanitize_content(content, file_path, is_lua_module=True, dcs_strict_sanitize
         for pattern, replacement in DISALLOWED_LINE_PATTERNS.items():
             processed_content = pattern.sub(replacement, processed_content)
 
-        # Transform log.* statements
-        processed_content = LOG_INFO_TRANSFORM_PATTERN.sub(r"env.info\1", processed_content)
-        processed_content = LOG_WARNING_TRANSFORM_PATTERN.sub(r"env.warning\1", processed_content)
-        processed_content = LOG_ERROR_TRANSFORM_PATTERN.sub(r"env.error\1", processed_content)
-        processed_content = LOG_OTHER_REMOVAL_PATTERN.sub("", processed_content)  # Remove other log.xxx calls
+        # Transform log.* statements using safe replacement
+        processed_content = _safe_regex_replace(LOG_INFO_TRANSFORM_PATTERN, "env.info", processed_content)
+        processed_content = _safe_regex_replace(LOG_WARNING_TRANSFORM_PATTERN, "env.warning", processed_content)
+        processed_content = _safe_regex_replace(LOG_ERROR_TRANSFORM_PATTERN, "env.error", processed_content)
+        processed_content = _safe_regex_replace(LOG_OTHER_REMOVAL_PATTERN, "", processed_content, is_removal=True)
 
-        # Transform print statements
-        processed_content = PRINT_TRANSFORM_PATTERN.sub(r"env.info\1", processed_content)
+        # Transform print statements using safe replacement
+        processed_content = _safe_regex_replace(PRINT_TRANSFORM_PATTERN, "env.info", processed_content)
 
         return processed_content
 
