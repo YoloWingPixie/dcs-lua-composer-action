@@ -47,9 +47,10 @@ REQUIRE_REMOVAL_PATTERN = re.compile(
     re.VERBOSE,
 )
 
+
 def _find_balanced_parentheses(text, start_pos):
     """Find the matching closing parenthesis for an opening parenthesis at start_pos."""
-    if start_pos >= len(text) or text[start_pos] != '(':
+    if start_pos >= len(text) or text[start_pos] != "(":
         return -1
 
     paren_count = 1
@@ -63,15 +64,15 @@ def _find_balanced_parentheses(text, start_pos):
 
         if escape_next:
             escape_next = False
-        elif char == '\\':
+        elif char == "\\":
             escape_next = True
         elif not in_string:
             if char in ['"', "'"]:
                 in_string = True
                 string_char = char
-            elif char == '(':
+            elif char == "(":
                 paren_count += 1
-            elif char == ')':
+            elif char == ")":
                 paren_count -= 1
         elif in_string and char == string_char:
             in_string = False
@@ -81,6 +82,7 @@ def _find_balanced_parentheses(text, start_pos):
 
     return pos - 1 if paren_count == 0 else -1
 
+
 def _safe_regex_replace(pattern, replacement, text, is_removal=False):
     """Safely replace function calls while handling nested parentheses properly."""
     result = []
@@ -88,10 +90,10 @@ def _safe_regex_replace(pattern, replacement, text, is_removal=False):
 
     for match in pattern.finditer(text):
         # Add text before this match
-        result.append(text[last_end:match.start()])
+        result.append(text[last_end : match.start()])
 
         # Find the opening parenthesis in the original text starting from match position
-        paren_start_in_text = text.find('(', match.start())
+        paren_start_in_text = text.find("(", match.start())
         if paren_start_in_text == -1 or paren_start_in_text >= match.end() + 10:  # Safety margin
             # No parentheses found nearby, handle as simple replacement
             if is_removal:
@@ -105,26 +107,26 @@ def _safe_regex_replace(pattern, replacement, text, is_removal=False):
 
             if paren_end == -1:
                 # Unbalanced parentheses, keep original
-                result.append(text[match.start():match.end()])
+                result.append(text[match.start() : match.end()])
                 last_end = match.end()
             else:
                 # Extract the full function call with balanced parentheses
                 if is_removal:
                     # For removal, skip adding anything and also skip any trailing semicolon
                     next_pos = paren_end + 1
-                    if next_pos < len(text) and text[next_pos:next_pos+1] == ';':
+                    if next_pos < len(text) and text[next_pos : next_pos + 1] == ";":
                         next_pos += 1
                     last_end = next_pos
                 else:
                     # For transformation, apply the replacement
-                    prefix = text[match.start():paren_start_in_text]
-                    args = text[paren_start_in_text:paren_end + 1]
+                    args = text[paren_start_in_text : paren_end + 1]
                     result.append(replacement + args)
                     last_end = paren_end + 1
 
     # Add remaining text
     result.append(text[last_end:])
-    return ''.join(result)
+    return "".join(result)
+
 
 # Improved patterns that will work with the safe replacement function
 PRINT_TRANSFORM_PATTERN = re.compile(r"\bprint\s*(?=\()")
