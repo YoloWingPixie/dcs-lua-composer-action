@@ -298,6 +298,7 @@ def build_project(
     footer_file_rel,
     dcs_strict_sanitize=True,
     dependencies_config=None,
+    scope="global",
 ):
     src_dir_path = Path(src_dir).resolve()
     output_file_path = Path(output_file).resolve()
@@ -445,7 +446,14 @@ def build_project(
     final_lua_code.append(
         f"-- Core Modules Order: {', '.join(sorted_core_module_names) if sorted_core_module_names else 'None'}\n"
     )
+    final_lua_code.append(f"-- Scope: {scope}\n")
     final_lua_code.append("\n")
+
+    # Start local scope if requested (after build info, excluding header)
+    if scope == "local":
+        final_lua_code.append("-- Beginning of local scope\n")
+        final_lua_code.append("do\n")
+        final_lua_code.append("\n")
 
     # 4. Required Namespace File Content (sanitized)
     final_lua_code.append(f"-- Namespace Content from: {namespace_path.relative_to(src_dir_path)}\n")
@@ -495,6 +503,11 @@ def build_project(
             )
         )
     final_lua_code.append("\n")
+
+    # End local scope if requested (after entrypoint, before footer)
+    if scope == "local":
+        final_lua_code.append("\n-- End of local scope\n")
+        final_lua_code.append("end\n")
 
     # 7. Optional Footer File Content (verbatim - no strict sanitization applied here by default rule)
     if footer_path and footer_path.is_file():
@@ -565,6 +578,13 @@ if __name__ == "__main__":
         default=None,
         help="JSON-encoded list of external dependencies to inject.\nCan be provided via .composerrc file instead.",
     )
+    parser.add_argument(
+        "--scope",
+        dest="scope",
+        choices=["global", "local"],
+        default="global",
+        help="Scope for the generated script. 'global' (default) generates normal global scope, 'local' wraps content in do...end blocks for local scoping.",
+    )
 
     args = parser.parse_args()
 
@@ -586,4 +606,5 @@ if __name__ == "__main__":
         args.footer_file_rel,
         args.dcs_strict_sanitize,
         dependencies_config,
+        args.scope,
     )

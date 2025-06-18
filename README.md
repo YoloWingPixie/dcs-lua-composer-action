@@ -36,6 +36,45 @@ DCS World mission scripting often involves loading a single Lua file. As project
 *   **Python-based:** Uses `luaparser` for accurate Lua analysis and robust processing.
 *   **`uv` Integration:** Leverages `uv` for Python environment and execution.
 
+## Scoping Options
+
+The composer supports two scoping modes for the generated script:
+
+### Global Scope (Default)
+```
+scope: "global"
+```
+- All code runs in the global Lua scope
+- Variables declared without `local` become global
+- Traditional single-file script behavior
+- Header and footer files remain in global scope
+
+### Local Scope
+```
+scope: "local"
+```
+- Main content (dependencies, namespace, core modules, entrypoint) is wrapped in a `do...end` block
+- Provides better encapsulation and prevents global namespace pollution
+- Header and footer files remain in global scope for setup/cleanup
+- Variables declared without `local` are scoped to the `do` block instead of globally
+
+**Example output structure with local scope:**
+```lua
+-- Header content (global scope)
+-- Build information
+
+-- Beginning of local scope
+do
+    -- Dependencies
+    -- Namespace
+    -- Core modules
+    -- Entrypoint
+-- End of local scope
+end
+
+-- Footer content (global scope)
+```
+
 ## Inputs
 
 | Input                   | Description                                                                                                                               | Required | Default                     |
@@ -47,6 +86,7 @@ DCS World mission scripting often involves loading a single Lua file. As project
 | `entrypoint_file`       | Required: Relative path *from source_directory* to the main entry point file. Loaded after core modules. Sanitized.                         | `true`   | *N/A*                       |
 | `footer_file`           | Optional: Relative path *from source_directory* to the footer file. Included verbatim at the bottom.                                      | `false`  | `''`                         |
 | `dcs_strict_sanitize`   | If true (default), fails build on os, io, lfs usage. `loadlib` is always removed with a warning. Print/log are always transformed.      | `false`  | `true`                      |
+| `scope`                 | Scope for the generated script. `global` (default) generates normal global scope, `local` wraps content in do...end blocks for local scoping. | `false`  | `global`                    |
 
 ## Outputs
 
@@ -89,6 +129,7 @@ jobs:
           entrypoint_file: 'main.lua'                           # Required, path relative to source_directory
           # footer_file: 'my_footer.txt'                        # Optional, path relative to source_directory
           # dcs_strict_sanitize: 'false'                        # Optional, default is true
+          # scope: 'local'                                      # Optional, default is 'global'
 
       - name: Verify Build Output
         run: |
@@ -138,7 +179,8 @@ Create a `.composerrc` file in your repository root with your preferred configur
   "namespace_file": "namespace.lua",
   "entrypoint_file": "main.lua",
   "footer_file": "",
-  "dcs_strict_sanitize": true
+  "dcs_strict_sanitize": true,
+  "scope": "global"
 }
 ```
 
@@ -159,6 +201,7 @@ With a `.composerrc` file in place, your workflow can be simplified:
   with:
     # Only override specific values as needed
     output_file: 'dist/MySpecialMission.lua'
+    scope: 'local'  # Override scope for better encapsulation
     # All other values come from .composerrc
 ```
 
@@ -175,6 +218,7 @@ All action inputs can be specified in `.composerrc`:
 | `entrypoint_file` | Required main entry point file | string |
 | `footer_file` | Optional footer file | string |
 | `dcs_strict_sanitize` | Enable strict DCS sanitization | boolean |
+| `scope` | Scope for generated script: `global` or `local` | string |
 | `dependencies` | External dependencies to inject | array |
 
 ### External Dependencies

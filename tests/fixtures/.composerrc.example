@@ -1,0 +1,26 @@
+{
+  "source_directory": "src",
+  "output_file": "dist/mission_script.lua",
+  "header_file": "header.lua",
+  "namespace_file": "namespace.lua",
+  "entrypoint_file": "main.lua",
+  "footer_file": "footer.lua",
+  "dcs_strict_sanitize": true,
+  "scope": "local",
+  "dependencies": [
+    {
+      "name": "mist",
+      "type": "github_release",
+      "source": "mrSkortch/MiST@latest",
+      "file": "mist.lua",
+      "license": "LICENSE",
+      "description": "Mission Scripting Tools for Eagle Dynamics DCS World"
+    },
+    {
+      "name": "utils",
+      "type": "local",
+      "source": "lib/utils.lua",
+      "description": "Local utility functions"
+    }
+  ]
+}
